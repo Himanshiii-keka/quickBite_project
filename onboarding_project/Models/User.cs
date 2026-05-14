@@ -1,4 +1,5 @@
-﻿using startup_project.Models.Enums;
+﻿using System.ComponentModel.DataAnnotations;
+using startup_project.Models.Enums;
 
 namespace startup_project.Models
 {
@@ -6,21 +7,27 @@ namespace startup_project.Models
     {
         public int Id { get; set; }
 
-        public string Name { get; set; } = string.Empty;
+        [Required]
+        [MaxLength(100)]
+        public string Name { get; set; } = null!;
 
-        // Indexed for fast lookup during login and duplicate checks
-        public string Email { get; set; } = string.Empty;
+        [Required]
+        [EmailAddress]
+        [MaxLength(256)]
+        public string Email { get; set; } = null!;
 
-        // Indexed for fast lookup during duplicate phone checks
-        public string PhoneNumber { get; set; } = string.Empty;
+        [Required]
+        [MaxLength(15)]
+        public string PhoneNumber { get; set; } = null!;
 
-        public string HashedPassword { get; set; } = string.Empty;
+        [Required]
+        public string HashedPassword { get; set; } = null!;
 
         public UserRole Role { get; set; } = UserRole.User;
 
         public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
-        // Navigation: one user can place many orders
+        // Navigation
         public ICollection<Order> Orders { get; set; } = new List<Order>();
     }
 }

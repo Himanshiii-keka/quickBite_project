@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace startup_project.Models
 {
     /// <summary>
@@ -8,7 +10,7 @@ namespace startup_project.Models
     {
         public int Id { get; set; }
 
-        // FK — unique index in DbContext to enforce one cart per user
+        [Required]
         public int UserId { get; set; }
 
         // Null when cart is empty; set when first item is added

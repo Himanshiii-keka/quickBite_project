@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using startup_project.Data;
 using startup_project.Models;
 using startup_project.Models.Common;
+using startup_project.Models.ViewModels;
 
 namespace startup_project.Services
 {
@@ -16,7 +17,7 @@ namespace startup_project.Services
 
         // ---------- View Cart ----------
 
-        public async Task<CartResponse> GetCartAsync(int userId)
+        public async Task<CartViewModel> GetCartAsync(int userId)
         {
             var cart = await LoadCartAsync(userId);
             return BuildResponse(cart);
@@ -29,27 +30,27 @@ namespace startup_project.Services
         /// if the cart already holds items from a different restaurant, returns 409 with a clear message.
         /// If the item is already in the cart, its quantity is incremented instead of adding a duplicate row.
         /// </summary>
-        public async Task<ServiceResult<CartResponse>> AddItemAsync(int userId, AddCartItemRequest request)
+        public async Task<ServiceResult<CartViewModel>> AddItemAsync(int userId, AddCartItemRequest request)
         {
             var menuItem = await _db.MenuItems
                 .Include(m => m.Restaurant)
                 .FirstOrDefaultAsync(m => m.Id == request.MenuItemId);
 
             if (menuItem == null)
-                return ServiceResult<CartResponse>.Fail(StatusCodes.Status404NotFound, "Menu item not found.");
+                return ServiceResult<CartViewModel>.Fail(StatusCodes.Status404NotFound, "Menu item not found.");
 
             if (!menuItem.IsAvailable)
-                return ServiceResult<CartResponse>.Fail(StatusCodes.Status400BadRequest, "This menu item is currently unavailable.");
+                return ServiceResult<CartViewModel>.Fail(StatusCodes.Status400BadRequest, "This menu item is currently unavailable.");
 
             if (!menuItem.Restaurant.IsActive)
-                return ServiceResult<CartResponse>.Fail(StatusCodes.Status400BadRequest, "This restaurant is currently inactive.");
+                return ServiceResult<CartViewModel>.Fail(StatusCodes.Status400BadRequest, "This restaurant is currently inactive.");
 
             var cart = await LoadOrCreateCartAsync(userId);
 
             // Business rule: cart can only hold items from one restaurant at a time
             if (cart.RestaurantId.HasValue && cart.RestaurantId.Value != menuItem.RestaurantId)
             {
-                return ServiceResult<CartResponse>.Fail(
+                return ServiceResult<CartViewModel>.Fail(
                     StatusCodes.Status409Conflict,
                     "Your cart already contains items from another restaurant. Please clear it before ordering from a different restaurant.");
             }
@@ -78,20 +79,20 @@ namespace startup_project.Services
 
             // Reload to get fresh MenuItem navigation for response
             var refreshed = await LoadCartAsync(userId);
-            return ServiceResult<CartResponse>.Ok(BuildResponse(refreshed), "Item added to cart.");
+            return ServiceResult<CartViewModel>.Ok(BuildResponse(refreshed), "Item added to cart.");
         }
 
         // ---------- Remove Item ----------
 
-        public async Task<ServiceResult<CartResponse>> RemoveItemAsync(int userId, int menuItemId)
+        public async Task<ServiceResult<CartViewModel>> RemoveItemAsync(int userId, int menuItemId)
         {
             var cart = await LoadCartAsync(userId);
             if (cart == null || cart.CartItems.Count == 0)
-                return ServiceResult<CartResponse>.Fail(StatusCodes.Status404NotFound, "Your cart is empty.");
+                return ServiceResult<CartViewModel>.Fail(StatusCodes.Status404NotFound, "Your cart is empty.");
 
             var line = cart.CartItems.FirstOrDefault(ci => ci.MenuItemId == menuItemId);
             if (line == null)
-                return ServiceResult<CartResponse>.Fail(StatusCodes.Status404NotFound, "Item not found in cart.");
+                return ServiceResult<CartViewModel>.Fail(StatusCodes.Status404NotFound, "Item not found in cart.");
 
             _db.CartItems.Remove(line);
 
@@ -104,7 +105,7 @@ namespace startup_project.Services
             await _db.SaveChangesAsync();
 
             var refreshed = await LoadCartAsync(userId);
-            return ServiceResult<CartResponse>.Ok(BuildResponse(refreshed), "Item removed from cart.");
+            return ServiceResult<CartViewModel>.Ok(BuildResponse(refreshed), "Item removed from cart.");
         }
 
         // ---------- Clear Cart ----------
@@ -146,17 +147,17 @@ namespace startup_project.Services
             return cart;
         }
 
-        private static CartResponse BuildResponse(Cart? cart)
+        private static CartViewModel BuildResponse(Cart? cart)
         {
             if (cart == null || cart.CartItems.Count == 0)
-                return new CartResponse();
+                return new CartViewModel();
 
-            var response = new CartResponse
+            var response = new CartViewModel
             {
                 RestaurantId = cart.RestaurantId,
                 RestaurantName = cart.Restaurant?.Name,
                 Items = cart.CartItems
-                    .Select(ci => new CartItemResponse
+                    .Select(ci => new CartItemViewModel
                     {
                         MenuItemId = ci.MenuItemId,
                         ItemName = ci.MenuItem.Name,

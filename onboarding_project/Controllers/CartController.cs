@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using startup_project.Common;
 using startup_project.Models;
+using startup_project.Models.ViewModels;
 using startup_project.Services;
 
 namespace startup_project.Controllers
@@ -20,7 +21,7 @@ namespace startup_project.Controllers
 
         /// <summary>Get the current user's cart. Returns an empty cart if none exists yet.</summary>
         [HttpGet]
-        [ProducesResponseType(typeof(CartResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(CartViewModel), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetCart()
         {
             var userId = User.GetUserId();
@@ -33,7 +34,7 @@ namespace startup_project.Controllers
         /// A cart can only contain items from one restaurant at a time.
         /// </summary>
         [HttpPost("items")]
-        [ProducesResponseType(typeof(CartResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(CartViewModel), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ErrorMessageResponse), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ErrorMessageResponse), StatusCodes.Status409Conflict)]
@@ -53,7 +54,7 @@ namespace startup_project.Controllers
 
         /// <summary>Remove a single menu item from the cart.</summary>
         [HttpDelete("items/{menuItemId:int}")]
-        [ProducesResponseType(typeof(CartResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(CartViewModel), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorMessageResponse), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> RemoveItem(int menuItemId)
         {

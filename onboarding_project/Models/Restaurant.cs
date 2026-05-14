@@ -1,23 +1,31 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace startup_project.Models
 {
     public class Restaurant
     {
         public int Id { get; set; }
 
-        public string Name { get; set; } = string.Empty;
+        [Required]
+        [MaxLength(150)]
+        public string Name { get; set; } = null!;
 
-        public string City { get; set; } = string.Empty;
+        [Required]
+        [MaxLength(100)]
+        public string City { get; set; } = null!;
 
-        public string Address { get; set; } = string.Empty;
+        [Required]
+        [MaxLength(300)]
+        public string Address { get; set; } = null!;
 
         public bool IsActive { get; set; } = true;
 
-        // Stored as decimal to avoid floating point issues
+        [Range(0, 5)]
         public decimal Rating { get; set; } = 0.0m;
 
         public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
-        // Navigation: one restaurant has many menu items and orders
+        // Navigation
         public ICollection<MenuItem> MenuItems { get; set; } = new List<MenuItem>();
         public ICollection<Order> Orders { get; set; } = new List<Order>();
     }

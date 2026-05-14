@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using startup_project.Models;
+using startup_project.Models.ViewModels;
 using startup_project.Services;
 
 namespace startup_project.Controllers
@@ -27,7 +28,7 @@ namespace startup_project.Controllers
 
         /// <summary>List ALL restaurants — active and inactive — for admin management.</summary>
         [HttpGet("restaurants")]
-        [ProducesResponseType(typeof(List<RestaurantResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(List<RestaurantViewModel>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAllRestaurants()
         {
             var data = await _restaurantService.GetAllAsync();
@@ -36,7 +37,7 @@ namespace startup_project.Controllers
 
         /// <summary>Create a new restaurant.</summary>
         [HttpPost("restaurants")]
-        [ProducesResponseType(typeof(RestaurantResponse), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(RestaurantViewModel), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CreateRestaurant([FromBody] CreateRestaurantRequest request)
         {
@@ -49,7 +50,7 @@ namespace startup_project.Controllers
 
         /// <summary>Update one or more fields of an existing restaurant. Only supplied fields are changed.</summary>
         [HttpPut("restaurants/{id:int}")]
-        [ProducesResponseType(typeof(RestaurantResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(RestaurantViewModel), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ErrorMessageResponse), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateRestaurant(int id, [FromBody] UpdateRestaurantRequest request)
@@ -69,7 +70,7 @@ namespace startup_project.Controllers
 
         /// <summary>List ALL menu items for a restaurant (including unavailable ones).</summary>
         [HttpGet("restaurants/{restaurantId:int}/menu")]
-        [ProducesResponseType(typeof(List<MenuItemResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(List<MenuItemViewModel>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorMessageResponse), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetMenuForAdmin(int restaurantId)
         {
@@ -82,7 +83,7 @@ namespace startup_project.Controllers
 
         /// <summary>Add a menu item to a restaurant.</summary>
         [HttpPost("restaurants/{restaurantId:int}/menu")]
-        [ProducesResponseType(typeof(MenuItemResponse), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(MenuItemViewModel), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ErrorMessageResponse), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> CreateMenuItem(int restaurantId, [FromBody] CreateMenuItemRequest request)
@@ -100,7 +101,7 @@ namespace startup_project.Controllers
 
         /// <summary>Update fields of a menu item, e.g. price or availability. Only supplied fields are changed.</summary>
         [HttpPut("menu/{id:int}")]
-        [ProducesResponseType(typeof(MenuItemResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(MenuItemViewModel), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ErrorMessageResponse), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateMenuItem(int id, [FromBody] UpdateMenuItemRequest request)

@@ -5,6 +5,7 @@ using startup_project.Common;
 using startup_project.Data;
 using startup_project.Models;
 using startup_project.Models.Common;
+using startup_project.Models.ViewModels;
 
 namespace startup_project.Services
 {
@@ -24,12 +25,12 @@ namespace startup_project.Services
         // ---------- Browse (User-facing) ----------
 
         /// <summary>Returns only restaurants where IsActive = true. Cached (Redis or memory) with a short TTL.</summary>
-        public async Task<List<RestaurantResponse>> GetActiveAsync()
+        public async Task<List<RestaurantViewModel>> GetActiveAsync()
         {
             var cached = await _cache.GetStringAsync(PublicReadCache.ActiveRestaurantsKey);
             if (!string.IsNullOrEmpty(cached))
             {
-                var fromCache = JsonSerializer.Deserialize<List<RestaurantResponse>>(cached, JsonOptions);
+                var fromCache = JsonSerializer.Deserialize<List<RestaurantViewModel>>(cached, JsonOptions);
                 if (fromCache != null)
                     return fromCache;
             }
@@ -38,7 +39,7 @@ namespace startup_project.Services
                 .AsNoTracking()
                 .Where(r => r.IsActive)
                 .OrderBy(r => r.Name)
-                .Select(r => new RestaurantResponse
+                .Select(r => new RestaurantViewModel
                 {
                     Id = r.Id,
                     Name = r.Name,
@@ -58,12 +59,12 @@ namespace startup_project.Services
         }
 
         /// <summary>Returns ALL restaurants (active + inactive). Admin-only listing.</summary>
-        public async Task<List<RestaurantResponse>> GetAllAsync()
+        public async Task<List<RestaurantViewModel>> GetAllAsync()
         {
             return await _db.Restaurants
                 .AsNoTracking()
                 .OrderBy(r => r.Name)
-                .Select(r => new RestaurantResponse
+                .Select(r => new RestaurantViewModel
                 {
                     Id = r.Id,
                     Name = r.Name,
@@ -75,24 +76,24 @@ namespace startup_project.Services
                 .ToListAsync();
         }
 
-        public async Task<ServiceResult<RestaurantResponse>> GetByIdAsync(int id, bool activeOnly)
+        public async Task<ServiceResult<RestaurantViewModel>> GetByIdAsync(int id, bool activeOnly)
         {
             var restaurant = await _db.Restaurants
                 .AsNoTracking()
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (restaurant == null)
-                return ServiceResult<RestaurantResponse>.Fail(StatusCodes.Status404NotFound, "Restaurant not found.");
+                return ServiceResult<RestaurantViewModel>.Fail(StatusCodes.Status404NotFound, "Restaurant not found.");
 
             if (activeOnly && !restaurant.IsActive)
-                return ServiceResult<RestaurantResponse>.Fail(StatusCodes.Status404NotFound, "Restaurant not found.");
+                return ServiceResult<RestaurantViewModel>.Fail(StatusCodes.Status404NotFound, "Restaurant not found.");
 
-            return ServiceResult<RestaurantResponse>.Ok(Map(restaurant));
+            return ServiceResult<RestaurantViewModel>.Ok(Map(restaurant));
         }
 
         // ---------- Admin: Create / Update ----------
 
-        public async Task<ServiceResult<RestaurantResponse>> CreateAsync(CreateRestaurantRequest request)
+        public async Task<ServiceResult<RestaurantViewModel>> CreateAsync(CreateRestaurantRequest request)
         {
             var restaurant = new Restaurant
             {
@@ -108,14 +109,14 @@ namespace startup_project.Services
 
             await PublicReadCache.InvalidateActiveRestaurantsAsync(_cache);
 
-            return ServiceResult<RestaurantResponse>.Created(Map(restaurant), "Restaurant created.");
+            return ServiceResult<RestaurantViewModel>.Created(Map(restaurant), "Restaurant created.");
         }
 
-        public async Task<ServiceResult<RestaurantResponse>> UpdateAsync(int id, UpdateRestaurantRequest request)
+        public async Task<ServiceResult<RestaurantViewModel>> UpdateAsync(int id, UpdateRestaurantRequest request)
         {
             var restaurant = await _db.Restaurants.FirstOrDefaultAsync(r => r.Id == id);
             if (restaurant == null)
-                return ServiceResult<RestaurantResponse>.Fail(StatusCodes.Status404NotFound, "Restaurant not found.");
+                return ServiceResult<RestaurantViewModel>.Fail(StatusCodes.Status404NotFound, "Restaurant not found.");
 
             // Only patch supplied fields
             if (request.Name != null) restaurant.Name = request.Name.Trim();
@@ -129,10 +130,10 @@ namespace startup_project.Services
             await PublicReadCache.InvalidateActiveRestaurantsAsync(_cache);
             await PublicReadCache.InvalidateRestaurantMenusAsync(_cache, id);
 
-            return ServiceResult<RestaurantResponse>.Ok(Map(restaurant), "Restaurant updated.");
+            return ServiceResult<RestaurantViewModel>.Ok(Map(restaurant), "Restaurant updated.");
         }
 
-        private static RestaurantResponse Map(Restaurant r) => new()
+        private static RestaurantViewModel Map(Restaurant r) => new()
         {
             Id = r.Id,
             Name = r.Name,

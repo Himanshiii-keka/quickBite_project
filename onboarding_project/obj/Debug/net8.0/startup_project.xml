@@ -29,19 +29,19 @@
         <member name="M:startup_project.Controllers.AdminController.GetAllRestaurants">
             <summary>List ALL restaurants — active and inactive — for admin management.</summary>
         </member>
-        <member name="M:startup_project.Controllers.AdminController.CreateRestaurant(startup_project.Models.CreateRestaurantRequest)">
+        <member name="M:startup_project.Controllers.AdminController.CreateRestaurant(startup_project.Models.ViewModels.CreateRestaurantRequest)">
             <summary>Create a new restaurant.</summary>
         </member>
-        <member name="M:startup_project.Controllers.AdminController.UpdateRestaurant(System.Int32,startup_project.Models.UpdateRestaurantRequest)">
+        <member name="M:startup_project.Controllers.AdminController.UpdateRestaurant(System.Int32,startup_project.Models.ViewModels.UpdateRestaurantRequest)">
             <summary>Update one or more fields of an existing restaurant. Only supplied fields are changed.</summary>
         </member>
         <member name="M:startup_project.Controllers.AdminController.GetMenuForAdmin(System.Int32)">
             <summary>List ALL menu items for a restaurant (including unavailable ones).</summary>
         </member>
-        <member name="M:startup_project.Controllers.AdminController.CreateMenuItem(System.Int32,startup_project.Models.CreateMenuItemRequest)">
+        <member name="M:startup_project.Controllers.AdminController.CreateMenuItem(System.Int32,startup_project.Models.ViewModels.CreateMenuItemRequest)">
             <summary>Add a menu item to a restaurant.</summary>
         </member>
-        <member name="M:startup_project.Controllers.AdminController.UpdateMenuItem(System.Int32,startup_project.Models.UpdateMenuItemRequest)">
+        <member name="M:startup_project.Controllers.AdminController.UpdateMenuItem(System.Int32,startup_project.Models.ViewModels.UpdateMenuItemRequest)">
             <summary>Update fields of a menu item, e.g. price or availability. Only supplied fields are changed.</summary>
         </member>
         <member name="M:startup_project.Controllers.AdminController.DeleteMenuItem(System.Int32)">
@@ -59,7 +59,7 @@
         <member name="M:startup_project.Controllers.CartController.GetCart">
             <summary>Get the current user's cart. Returns an empty cart if none exists yet.</summary>
         </member>
-        <member name="M:startup_project.Controllers.CartController.AddItem(startup_project.Models.AddCartItemRequest)">
+        <member name="M:startup_project.Controllers.CartController.AddItem(startup_project.Models.ViewModels.AddCartItemRequest)">
             <summary>
             Add a menu item to the cart, or increment quantity if it's already there.
             A cart can only contain items from one restaurant at a time.
@@ -74,7 +74,7 @@
         <member name="M:startup_project.Controllers.OrdersController.Checkout">
             <summary>Place an order from the current user's cart. Empties the cart on success.</summary>
         </member>
-        <member name="M:startup_project.Controllers.OrdersController.GetMyOrders">
+        <member name="M:startup_project.Controllers.OrdersController.GetMyOrders(System.Nullable{System.Int32})">
             <summary>Get the current user's order history (newest first).</summary>
         </member>
         <member name="M:startup_project.Controllers.OrdersController.GetMyOrder(System.Int32)">
@@ -87,7 +87,7 @@
             <param name="status">Optional. 1=Placed, 2=Confirmed, 3=Preparing, 4=OutForDelivery, 5=Delivered, 6=Cancelled.</param>
             <param name="restaurantId">Optional. Restrict to a single restaurant.</param>
         </member>
-        <member name="M:startup_project.Controllers.OrdersController.UpdateStatus(System.Int32,startup_project.Models.UpdateOrderStatusRequest)">
+        <member name="M:startup_project.Controllers.OrdersController.UpdateStatus(System.Int32,startup_project.Models.ViewModels.UpdateOrderStatusRequest)">
             <summary>Admin updates the status of an order. Delivered / Cancelled orders are terminal and can't be changed.</summary>
         </member>
         <member name="M:startup_project.Controllers.RestaurantsController.GetActive">
@@ -168,13 +168,77 @@
         <member name="M:startup_project.Models.Common.ServiceResult.#ctor(System.Boolean,System.Int32,System.String)">
             <summary>Non-generic variant for endpoints that don't return data on success.</summary>
         </member>
-        <member name="P:startup_project.Models.UpdateOrderStatusRequest.Status">
+        <member name="T:startup_project.Models.ViewModels.CartItemViewModel">
+            <summary>
+            ViewModel for a single cart item.
+            Represents cart item data without navigation to Cart or MenuItem entities.
+            </summary>
+        </member>
+        <member name="T:startup_project.Models.ViewModels.CartViewModel">
+            <summary>
+            ViewModel for displaying the user's cart.
+            Contains restaurant reference and list of items without any navigation properties.
+            </summary>
+        </member>
+        <member name="T:startup_project.Models.ViewModels.AddCartItemRequest">
+            <summary>
+            Request model for adding an item to cart.
+            </summary>
+        </member>
+        <member name="T:startup_project.Models.ViewModels.OrderItemViewModel">
+            <summary>
+            ViewModel for displaying a single order item in the response.
+            Contains item-specific details without any navigation properties.
+            </summary>
+        </member>
+        <member name="T:startup_project.Models.ViewModels.OrderViewModel">
+            <summary>
+            ViewModel for displaying order details.
+            Flattens restaurant and user data into simple properties (no navigation properties).
+            </summary>
+        </member>
+        <member name="T:startup_project.Models.ViewModels.UpdateOrderStatusRequest">
+            <summary>
+            Request model for updating order status.
+            </summary>
+        </member>
+        <member name="P:startup_project.Models.ViewModels.UpdateOrderStatusRequest.Status">
             <summary>1=Placed, 2=Confirmed, 3=Preparing, 4=OutForDelivery, 5=Delivered, 6=Cancelled</summary>
         </member>
-        <member name="T:startup_project.Models.UpdateRestaurantRequest">
-            <summary>Partial update — only non-null fields are applied.</summary>
+        <member name="T:startup_project.Models.ViewModels.RestaurantViewModel">
+            <summary>
+            ViewModel for displaying restaurant information.
+            No navigation properties to MenuItem or Order collections.
+            </summary>
         </member>
-        <member name="M:startup_project.Services.CartService.AddItemAsync(System.Int32,startup_project.Models.AddCartItemRequest)">
+        <member name="T:startup_project.Models.ViewModels.MenuItemViewModel">
+            <summary>
+            ViewModel for displaying menu item information.
+            No navigation to Restaurant entity.
+            </summary>
+        </member>
+        <member name="T:startup_project.Models.ViewModels.CreateRestaurantRequest">
+            <summary>
+            Request model for creating a new restaurant.
+            </summary>
+        </member>
+        <member name="T:startup_project.Models.ViewModels.UpdateRestaurantRequest">
+            <summary>
+            Request model for updating restaurant information.
+            Partial update — only non-null fields are applied.
+            </summary>
+        </member>
+        <member name="T:startup_project.Models.ViewModels.CreateMenuItemRequest">
+            <summary>
+            Request model for creating a new menu item.
+            </summary>
+        </member>
+        <member name="T:startup_project.Models.ViewModels.UpdateMenuItemRequest">
+            <summary>
+            Request model for updating menu item information.
+            </summary>
+        </member>
+        <member name="M:startup_project.Services.CartService.AddItemAsync(System.Int32,startup_project.Models.ViewModels.AddCartItemRequest)">
             <summary>
             Adds a menu item to the user's cart. Enforces "one restaurant per cart":
             if the cart already holds items from a different restaurant, returns 409 with a clear message.

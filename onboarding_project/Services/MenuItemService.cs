@@ -5,6 +5,7 @@ using startup_project.Common;
 using startup_project.Data;
 using startup_project.Models;
 using startup_project.Models.Common;
+using startup_project.Models.ViewModels;
 
 namespace startup_project.Services
 {
@@ -27,34 +28,34 @@ namespace startup_project.Services
         /// Returns menu items for a restaurant. For users we require the restaurant to be active
         /// AND only return available items. For admin we return everything. Successful responses are cached per restaurant and filter mode.
         /// </summary>
-        public async Task<ServiceResult<List<MenuItemResponse>>> GetByRestaurantAsync(int restaurantId, bool availableOnly)
+        public async Task<ServiceResult<List<MenuItemViewModel>>> GetByRestaurantAsync(int restaurantId, bool availableOnly)
         {
             var restaurant = await _db.Restaurants
                 .AsNoTracking()
                 .FirstOrDefaultAsync(r => r.Id == restaurantId);
 
             if (restaurant == null)
-                return ServiceResult<List<MenuItemResponse>>.Fail(StatusCodes.Status404NotFound, "Restaurant not found.");
+                return ServiceResult<List<MenuItemViewModel>>.Fail(StatusCodes.Status404NotFound, "Restaurant not found.");
 
             if (availableOnly && !restaurant.IsActive)
-                return ServiceResult<List<MenuItemResponse>>.Fail(StatusCodes.Status404NotFound, "Restaurant not found.");
+                return ServiceResult<List<MenuItemViewModel>>.Fail(StatusCodes.Status404NotFound, "Restaurant not found.");
 
             var cacheKey = PublicReadCache.MenuKey(restaurantId, availableOnly);
             var cached = await _cache.GetStringAsync(cacheKey);
             if (!string.IsNullOrEmpty(cached))
             {
-                var fromCache = JsonSerializer.Deserialize<List<MenuItemResponse>>(cached, JsonOptions);
+                var fromCache = JsonSerializer.Deserialize<List<MenuItemViewModel>>(cached, JsonOptions);
                 if (fromCache != null)
-                    return ServiceResult<List<MenuItemResponse>>.Ok(fromCache);
+                    return ServiceResult<List<MenuItemViewModel>>.Ok(fromCache);
             }
 
-            var query = _db.MenuItems.AsNoTracking().Where(m => m.RestaurantId == restaurantId);
+            var query = _db.MenuItems.Where(m => m.RestaurantId == restaurantId);
             if (availableOnly)
                 query = query.Where(m => m.IsAvailable);
 
             var items = await query
                 .OrderBy(m => m.Name)
-                .Select(m => new MenuItemResponse
+                .Select(m => new MenuItemViewModel
                 {
                     Id = m.Id,
                     RestaurantId = m.RestaurantId,
@@ -70,16 +71,16 @@ namespace startup_project.Services
                 JsonSerializer.Serialize(items, JsonOptions),
                 new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(2) });
 
-            return ServiceResult<List<MenuItemResponse>>.Ok(items);
+            return ServiceResult<List<MenuItemViewModel>>.Ok(items);
         }
 
         // ---------- Admin: Create / Update / Delete ----------
 
-        public async Task<ServiceResult<MenuItemResponse>> CreateAsync(int restaurantId, CreateMenuItemRequest request)
+        public async Task<ServiceResult<MenuItemViewModel>> CreateAsync(int restaurantId, CreateMenuItemRequest request)
         {
             bool restaurantExists = await _db.Restaurants.AnyAsync(r => r.Id == restaurantId);
             if (!restaurantExists)
-                return ServiceResult<MenuItemResponse>.Fail(StatusCodes.Status404NotFound, "Restaurant not found.");
+                return ServiceResult<MenuItemViewModel>.Fail(StatusCodes.Status404NotFound, "Restaurant not found.");
 
             var item = new MenuItem
             {
@@ -95,14 +96,14 @@ namespace startup_project.Services
 
             await PublicReadCache.InvalidateRestaurantMenusAsync(_cache, restaurantId);
 
-            return ServiceResult<MenuItemResponse>.Created(Map(item), "Menu item created.");
+            return ServiceResult<MenuItemViewModel>.Created(Map(item), "Menu item created.");
         }
 
-        public async Task<ServiceResult<MenuItemResponse>> UpdateAsync(int id, UpdateMenuItemRequest request)
+        public async Task<ServiceResult<MenuItemViewModel>> UpdateAsync(int id, UpdateMenuItemRequest request)
         {
             var item = await _db.MenuItems.FirstOrDefaultAsync(m => m.Id == id);
             if (item == null)
-                return ServiceResult<MenuItemResponse>.Fail(StatusCodes.Status404NotFound, "Menu item not found.");
+                return ServiceResult<MenuItemViewModel>.Fail(StatusCodes.Status404NotFound, "Menu item not found.");
 
             if (request.Name != null) item.Name = request.Name.Trim();
             if (request.Description != null) item.Description = request.Description.Trim();
@@ -114,7 +115,7 @@ namespace startup_project.Services
 
             await PublicReadCache.InvalidateRestaurantMenusAsync(_cache, restaurantId);
 
-            return ServiceResult<MenuItemResponse>.Ok(Map(item), "Menu item updated.");
+            return ServiceResult<MenuItemViewModel>.Ok(Map(item), "Menu item updated.");
         }
 
         public async Task<ServiceResult> DeleteAsync(int id)
@@ -142,7 +143,7 @@ namespace startup_project.Services
             return ServiceResult.Ok("Menu item deleted.");
         }
 
-        private static MenuItemResponse Map(MenuItem m) => new()
+        private static MenuItemViewModel Map(MenuItem m) => new()
         {
             Id = m.Id,
             RestaurantId = m.RestaurantId,

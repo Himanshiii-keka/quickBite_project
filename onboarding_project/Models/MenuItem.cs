@@ -1,16 +1,23 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace startup_project.Models
 {
     public class MenuItem
     {
         public int Id { get; set; }
 
-        // FK — indexed to speed up "get menu by restaurant" queries
+        [Required]
         public int RestaurantId { get; set; }
 
-        public string Name { get; set; } = string.Empty;
+        [Required]
+        [MaxLength(150)]
+        public string Name { get; set; } = null!;
 
-        public string Description { get; set; } = string.Empty;
+        [MaxLength(500)]
+        public string Description { get; set; } = null!;
 
+        [Required]
+        [Range(0.01, 100000)]
         public decimal Price { get; set; }
 
         public bool IsAvailable { get; set; } = true;

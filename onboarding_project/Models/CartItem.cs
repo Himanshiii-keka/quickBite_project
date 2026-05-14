@@ -1,14 +1,19 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace startup_project.Models
 {
     public class CartItem
     {
         public int Id { get; set; }
 
-        // FK — composite unique index (CartId, MenuItemId) in DbContext so the same item
-        // isn't stored as two rows; we just bump Quantity instead.
+        [Required]
         public int CartId { get; set; }
+
+        [Required]
         public int MenuItemId { get; set; }
 
+        [Required]
+        [Range(1, 99)]
         public int Quantity { get; set; }
 
         // Navigation
