@@ -1,0 +1,31 @@
+1. Microsoft.EntityFrameworkCore.SqlServer
+EF Core driver that translates your C# model classes and LINQ queries into SQL Server-specific SQL. Without it EF Core doesn't know how to talk to SQL Server.
+Microsoft.EntityFrameworkCore.Tools
+CLI tooling — lets you run dotnet ef migrations add and dotnet ef database update from the terminal to create/update your DB schema automatically from your models.
+Microsoft.EntityFrameworkCore.Design
+Required at build time for EF migrations scaffolding — it reads your DbContext and models to generate migration files.
+Microsoft.AspNetCore.Authentication.JwtBearer
+Adds JWT middleware. When you call app.UseAuthentication(), it automatically reads the Authorization: Bearer <token> header on incoming requests, validates the signature and expiry, and populates HttpContext.User so [Authorize] attributes work.
+BCrypt.Net-Next
+Implements BCrypt hashing. BCrypt.HashPassword("abc") returns a salted hash like $2a$11$.... BCrypt.Verify("abc", hash) returns true/false. The salt is embedded in the hash so you never store the salt separately.
+Swashbuckle.AspNetCore
+Generates the Swagger/OpenAPI JSON from your controllers and exposes the Swagger UI at /swagger.
+
+
+-- steps ---
+
+1. cd "path\to\onboarding_project"
+2. dotnet ef migrations add InitialCreate
+3. dotnet ef database update
+
+4. data seeding
+5. run the app
+6. swagger : http://localhost:5227/swagger
+
+7. appsettings.Development.json — same empty default so the app runs without Redis. When you want Redis locally, set:
+
+"ConnectionString": "localhost:6379,abortConnect=false,connectTimeout=2000"
+
+(Or your cloud URL + password, e.g. Azure Cache for Redis.)
+
+For production, set Redis:ConnectionString via environment variables or secrets

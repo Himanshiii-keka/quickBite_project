@@ -92,7 +92,7 @@
             <summary>Get the current user's order history (newest first).</summary>
         </member>
         <member name="M:startup_project.Controllers.OrdersController.GetMyOrder(System.Int32)">
-            <summary>Get a specific order belonging to the current user.</summary>
+            <summary>Get a specific order belonging to the current user (including its current status).</summary>
         </member>
         <member name="M:startup_project.Controllers.OrdersController.GetAll(System.Nullable{startup_project.Models.Enums.OrderStatus},System.Nullable{System.Int32})">
             <summary>
@@ -199,11 +199,22 @@
             Request model for adding an item to cart.
             </summary>
         </member>
-        <member name="T:startup_project.Models.ViewModels.UserOrderViewModel">
-            <summary>Order details returned to the placing user. Contains no customer identity fields.</summary>
+        <member name="T:startup_project.Models.ViewModels.OrderItemViewModel">
+            <summary>
+            ViewModel for displaying a single order item in the response.
+            Contains item-specific details without any navigation properties.
+            </summary>
         </member>
-        <member name="T:startup_project.Models.ViewModels.AdminOrderViewModel">
-            <summary>Order details returned to admins — includes customer identity on top of the base view.</summary>
+        <member name="T:startup_project.Models.ViewModels.OrderViewModel">
+            <summary>
+            ViewModel for displaying order details.
+            All data comes from snapshot fields on Order — no joins required.
+            </summary>
+        </member>
+        <member name="T:startup_project.Models.ViewModels.UpdateOrderStatusRequest">
+            <summary>
+            Request model for updating order status.
+            </summary>
         </member>
         <member name="P:startup_project.Models.ViewModels.UpdateOrderStatusRequest.Status">
             <summary>1=Placed, 2=Confirmed, 3=Preparing, 4=OutForDelivery, 5=Delivered, 6=Cancelled</summary>
@@ -241,27 +252,11 @@
             Request model for updating menu item information.
             </summary>
         </member>
-        <member name="M:startup_project.Services.CartService.GetCartAsync(System.Int32)">
-            <summary>
-            Returns the user's cart. Tries the distributed cache first (60 s TTL) so repeated
-            GET /cart calls don't hit SQL Server on every request. Falls back to DB on cache miss
-            or if Redis is unavailable. Cart data itself always lives in DB for checkout consistency.
-            Each table is queried separately — no SQL JOINs.
-            </summary>
-        </member>
         <member name="M:startup_project.Services.CartService.AddItemAsync(System.Int32,startup_project.Models.ViewModels.AddCartItemRequest)">
             <summary>
             Adds a menu item to the user's cart. Enforces "one restaurant per cart":
-            if the cart already holds items from a different restaurant, returns 409.
+            if the cart already holds items from a different restaurant, returns 409 with a clear message.
             If the item is already in the cart, its quantity is incremented instead of adding a duplicate row.
-            Each table is queried separately — no SQL JOINs.
-            </summary>
-        </member>
-        <member name="M:startup_project.Services.CartService.LoadAndBuildCartViewAsync(System.Int32)">
-            <summary>
-            Builds a CartViewModel by loading each table separately:
-            Cart → CartItems → MenuItems (batch) → Restaurant.
-            No SQL JOINs.
             </summary>
         </member>
         <member name="M:startup_project.Services.MenuItemService.GetByRestaurantAsync(System.Int32,System.Boolean)">
@@ -282,17 +277,15 @@
              </summary>
         </member>
         <member name="M:startup_project.Services.OrderService.CheckoutAsync(System.Int32)">
-            <summary>
-            Creates an Order from the user's current cart, snapshots prices into OrderItems,
-            then empties the cart. All wrapped in a transaction.
-            Each table is queried separately — no SQL JOINs.
-            </summary>
-        </member>
-        <member name="M:startup_project.Services.OrderService.GetForUserAsync(System.Int32)">
-            <summary>Returns the user's order history. Tables queried individually — no JOINs.</summary>
-        </member>
-        <member name="M:startup_project.Services.OrderService.GetAllAsync(System.Nullable{startup_project.Models.Enums.OrderStatus},System.Nullable{System.Int32})">
-            <summary>Returns all orders with customer info. Tables queried individually — no JOINs.</summary>
+             <summary>
+             Creates an Order from the user's current cart, snapshots prices into OrderItems,
+             then empties the cart. Wrapped in a transaction: Order + OrderItems insertion and
+             CartItems deletion are committed atomically.
+            
+             Bug fix: the previous implementation used a Select projection that left CartItem.MenuItem
+             navigation unloaded, causing a NullReferenceException on ci.MenuItem.IsAvailable.
+             Now uses explicit Include/ThenInclude to load the full graph before checkout logic runs.
+             </summary>
         </member>
         <member name="M:startup_project.Services.RestaurantService.GetActiveAsync">
             <summary>

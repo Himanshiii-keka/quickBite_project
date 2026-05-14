@@ -1,0 +1,34 @@
+c:\Temp\qb_build_check\appsettings.Development.json
+c:\Temp\qb_build_check\appsettings.json
+c:\Temp\qb_build_check\startup_project.staticwebassets.endpoints.json
+c:\Temp\qb_build_check\startup_project.exe
+c:\Temp\qb_build_check\startup_project.deps.json
+c:\Temp\qb_build_check\startup_project.runtimeconfig.json
+c:\Temp\qb_build_check\startup_project.dll
+c:\Temp\qb_build_check\startup_project.pdb
+c:\Temp\qb_build_check\startup_project.xml
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\startup_project.csproj.AssemblyReference.cache
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\rpswa.dswa.cache.json
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\startup_project.GeneratedMSBuildEditorConfig.editorconfig
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\startup_project.AssemblyInfoInputs.cache
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\startup_project.AssemblyInfo.cs
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\startup_project.csproj.CoreCompileInputs.cache
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\startup_project.MvcApplicationPartsAssemblyInfo.cs
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\startup_project.MvcApplicationPartsAssemblyInfo.cache
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\startup_project.sourcelink.json
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\rjimswa.dswa.cache.json
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\rjsmrazor.dswa.cache.json
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\rjsmcshtml.dswa.cache.json
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\scopedcss\bundle\startup_project.styles.css
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\staticwebassets.build.json
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\staticwebassets.build.json.cache
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\staticwebassets.development.json
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\staticwebassets.build.endpoints.json
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\swae.build.ex.cache
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\startup_.4E1460B1.Up2Date
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\startup_project.dll
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\refint\startup_project.dll
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\startup_project.xml
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\startup_project.pdb
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\startup_project.genruntimeconfig.cache
+c:\Users\DELL\OneDrive - Indian Institute of Technology Patna\Desktop\quickBite_project\onboarding_project\obj\Release\net8.0\ref\startup_project.dll

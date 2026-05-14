@@ -25,7 +25,7 @@ namespace startup_project.Controllers
         /// <summary>Place an order from the current user's cart. Empties the cart on success.</summary>
         [HttpPost("checkout")]
         [Authorize(Roles = "User")]
-        [ProducesResponseType(typeof(OrderViewModel), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(UserOrderViewModel), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorMessageResponse), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Checkout()
         {
@@ -40,22 +40,19 @@ namespace startup_project.Controllers
 
         /// <summary>Get the current user's order history (newest first).</summary>
         [HttpGet("my")]
-        [AllowAnonymous] // TODO: Remove this and uncomment [Authorize] after testing
-        // [Authorize(Roles = "User")]
-        [ProducesResponseType(typeof(List<OrderViewModel>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetMyOrders([FromQuery] int? testUserId = null)
+        [Authorize(Roles = "User")]
+        [ProducesResponseType(typeof(List<UserOrderViewModel>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetMyOrders()
         {
-            // TODO: Remove testUserId parameter after testing - use authenticated user instead
-            var userId = testUserId ?? 1; // Default to user 1 for testing
-            // var userId = User.GetUserId();
+            var userId = User.GetUserId();
             var data = await _orderService.GetForUserAsync(userId);
             return Ok(data);
         }
 
-        /// <summary>Get a specific order belonging to the current user (including its current status).</summary>
+        /// <summary>Get a specific order belonging to the current user.</summary>
         [HttpGet("my/{id:int}")]
         [Authorize(Roles = "User")]
-        [ProducesResponseType(typeof(OrderViewModel), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(UserOrderViewModel), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorMessageResponse), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(ErrorMessageResponse), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetMyOrder(int id)
@@ -78,7 +75,7 @@ namespace startup_project.Controllers
         /// <param name="restaurantId">Optional. Restrict to a single restaurant.</param>
         [HttpGet]
         [Authorize(Roles = "Admin")]
-        [ProducesResponseType(typeof(List<OrderViewModel>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(List<AdminOrderViewModel>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll([FromQuery] OrderStatus? status, [FromQuery] int? restaurantId)
         {
             var data = await _orderService.GetAllAsync(status, restaurantId);
@@ -88,7 +85,7 @@ namespace startup_project.Controllers
         /// <summary>Admin updates the status of an order. Delivered / Cancelled orders are terminal and can't be changed.</summary>
         [HttpPatch("{id:int}/status")]
         [Authorize(Roles = "Admin")]
-        [ProducesResponseType(typeof(OrderViewModel), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(AdminOrderViewModel), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ErrorMessageResponse), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateOrderStatusRequest request)

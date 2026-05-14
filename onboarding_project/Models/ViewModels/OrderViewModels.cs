@@ -3,12 +3,8 @@ using startup_project.Models.Enums;
 
 namespace startup_project.Models.ViewModels
 {
-    // ---------- Order View Models ----------
+    // ---------- Shared Item Line ----------
 
-    /// <summary>
-    /// ViewModel for displaying a single order item in the response.
-    /// Contains item-specific details without any navigation properties.
-    /// </summary>
     public class OrderItemViewModel
     {
         public string ItemName { get; set; } = string.Empty;
@@ -17,11 +13,10 @@ namespace startup_project.Models.ViewModels
         public decimal LineTotal { get; set; }
     }
 
-    /// <summary>
-    /// ViewModel for displaying order details.
-    /// Flattens restaurant and user data into simple properties (no navigation properties).
-    /// </summary>
-    public class OrderViewModel
+    // ---------- User-Facing Order View ----------
+
+    /// <summary>Order details returned to the placing user. Contains no customer identity fields.</summary>
+    public class UserOrderViewModel
     {
         public int Id { get; set; }
         public int RestaurantId { get; set; }
@@ -31,17 +26,19 @@ namespace startup_project.Models.ViewModels
         public DateTime OrderPlacedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public List<OrderItemViewModel> Items { get; set; } = new();
+    }
 
-        // Populated only for admin views (null when a user fetches their own orders)
-        public string? CustomerName { get; set; }
-        public string? CustomerEmail { get; set; }
+    // ---------- Admin-Facing Order View ----------
+
+    /// <summary>Order details returned to admins — includes customer identity on top of the base view.</summary>
+    public class AdminOrderViewModel : UserOrderViewModel
+    {
+        public string CustomerName { get; set; } = string.Empty;
+        public string CustomerEmail { get; set; } = string.Empty;
     }
 
     // ---------- Request Models ----------
 
-    /// <summary>
-    /// Request model for updating order status.
-    /// </summary>
     public class UpdateOrderStatusRequest
     {
         /// <summary>1=Placed, 2=Confirmed, 3=Preparing, 4=OutForDelivery, 5=Delivered, 6=Cancelled</summary>

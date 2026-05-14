@@ -15,18 +15,22 @@ namespace startup_project.Services
 
         private readonly ApplicationDbContext _db;
         private readonly IDistributedCache _cache;
+        private readonly ILogger<MenuItemService> _logger;
 
-        public MenuItemService(ApplicationDbContext db, IDistributedCache cache)
+        public MenuItemService(ApplicationDbContext db, IDistributedCache cache, ILogger<MenuItemService> logger)
         {
             _db = db;
             _cache = cache;
+            _logger = logger;
         }
 
         // ---------- Browse ----------
 
         /// <summary>
-        /// Returns menu items for a restaurant. For users we require the restaurant to be active
-        /// AND only return available items. For admin we return everything. Successful responses are cached per restaurant and filter mode.
+        /// Returns menu items for a restaurant. For users: restaurant must be active and only
+        /// available items are returned. For admin: all items regardless of availability.
+        /// Successful responses are cached per restaurant + filter mode (2 min TTL).
+        /// Redis failures are caught and logged; the request falls back to a DB read.
         /// </summary>
         public async Task<ServiceResult<List<MenuItemViewModel>>> GetByRestaurantAsync(int restaurantId, bool availableOnly)
         {
@@ -41,12 +45,20 @@ namespace startup_project.Services
                 return ServiceResult<List<MenuItemViewModel>>.Fail(StatusCodes.Status404NotFound, "Restaurant not found.");
 
             var cacheKey = PublicReadCache.MenuKey(restaurantId, availableOnly);
-            var cached = await _cache.GetStringAsync(cacheKey);
-            if (!string.IsNullOrEmpty(cached))
+
+            try
             {
-                var fromCache = JsonSerializer.Deserialize<List<MenuItemViewModel>>(cached, JsonOptions);
-                if (fromCache != null)
-                    return ServiceResult<List<MenuItemViewModel>>.Ok(fromCache);
+                var cached = await _cache.GetStringAsync(cacheKey);
+                if (!string.IsNullOrEmpty(cached))
+                {
+                    var fromCache = JsonSerializer.Deserialize<List<MenuItemViewModel>>(cached, JsonOptions);
+                    if (fromCache != null)
+                        return ServiceResult<List<MenuItemViewModel>>.Ok(fromCache);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Cache read failed for menu (restaurant {RestaurantId}); falling back to database.", restaurantId);
             }
 
             var query = _db.MenuItems.Where(m => m.RestaurantId == restaurantId);
@@ -66,10 +78,17 @@ namespace startup_project.Services
                 })
                 .ToListAsync();
 
-            await _cache.SetStringAsync(
-                cacheKey,
-                JsonSerializer.Serialize(items, JsonOptions),
-                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(2) });
+            try
+            {
+                await _cache.SetStringAsync(
+                    cacheKey,
+                    JsonSerializer.Serialize(items, JsonOptions),
+                    new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(2) });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Cache write failed for menu (restaurant {RestaurantId}). DB data returned successfully.", restaurantId);
+            }
 
             return ServiceResult<List<MenuItemViewModel>>.Ok(items);
         }
@@ -91,10 +110,27 @@ namespace startup_project.Services
                 IsAvailable = request.IsAvailable
             };
 
-            _db.MenuItems.Add(item);
-            await _db.SaveChangesAsync();
+            try
+            {
+                _db.MenuItems.Add(item);
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Database error creating menu item '{Name}' for restaurant {RestaurantId}.",
+                    request.Name, restaurantId);
+                return ServiceResult<MenuItemViewModel>.Fail(StatusCodes.Status500InternalServerError,
+                    "Failed to create menu item due to a database error.");
+            }
 
-            await PublicReadCache.InvalidateRestaurantMenusAsync(_cache, restaurantId);
+            try
+            {
+                await PublicReadCache.InvalidateRestaurantMenusAsync(_cache, restaurantId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Cache invalidation failed after creating menu item for restaurant {RestaurantId}.", restaurantId);
+            }
 
             return ServiceResult<MenuItemViewModel>.Created(Map(item), "Menu item created.");
         }
@@ -111,13 +147,37 @@ namespace startup_project.Services
             if (request.IsAvailable.HasValue) item.IsAvailable = request.IsAvailable.Value;
 
             var restaurantId = item.RestaurantId;
-            await _db.SaveChangesAsync();
 
-            await PublicReadCache.InvalidateRestaurantMenusAsync(_cache, restaurantId);
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Database error updating menu item {MenuItemId}.", id);
+                return ServiceResult<MenuItemViewModel>.Fail(StatusCodes.Status500InternalServerError,
+                    "Failed to update menu item due to a database error.");
+            }
+
+            try
+            {
+                await PublicReadCache.InvalidateRestaurantMenusAsync(_cache, restaurantId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Cache invalidation failed after updating menu item {MenuItemId}.", id);
+            }
 
             return ServiceResult<MenuItemViewModel>.Ok(Map(item), "Menu item updated.");
         }
 
+        /// <summary>
+        /// Deletes a menu item. Rejected with 409 if the item appears in any historical order.
+        ///
+        /// Transaction note: this method removes rows from both CartItems and MenuItems.
+        /// Both deletes are wrapped in an explicit transaction so a partial failure leaves the
+        /// DB in a consistent state (either both are removed or neither is).
+        /// </summary>
         public async Task<ServiceResult> DeleteAsync(int id)
         {
             var item = await _db.MenuItems.FirstOrDefaultAsync(m => m.Id == id);
@@ -132,13 +192,30 @@ namespace startup_project.Services
 
             var restaurantId = item.RestaurantId;
 
-            var cartReferences = _db.CartItems.Where(ci => ci.MenuItemId == id);
-            _db.CartItems.RemoveRange(cartReferences);
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                var cartReferences = _db.CartItems.Where(ci => ci.MenuItemId == id);
+                _db.CartItems.RemoveRange(cartReferences);
+                _db.MenuItems.Remove(item);
+                await _db.SaveChangesAsync();
+                await tx.CommitAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Database error deleting menu item {MenuItemId}.", id);
+                return ServiceResult.Fail(StatusCodes.Status500InternalServerError,
+                    "Failed to delete menu item due to a database error.");
+            }
 
-            _db.MenuItems.Remove(item);
-            await _db.SaveChangesAsync();
-
-            await PublicReadCache.InvalidateRestaurantMenusAsync(_cache, restaurantId);
+            try
+            {
+                await PublicReadCache.InvalidateRestaurantMenusAsync(_cache, restaurantId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Cache invalidation failed after deleting menu item {MenuItemId}.", id);
+            }
 
             return ServiceResult.Ok("Menu item deleted.");
         }

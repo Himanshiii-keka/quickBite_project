@@ -20,17 +20,18 @@ namespace startup_project.Controllers
         [ProducesResponseType(typeof(AuthSuccessResponse), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ErrorMessageResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorMessageResponse), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var (success, message, data) = await _authService.RegisterAsync(request);
+            var result = await _authService.RegisterAsync(request);
 
-            if (!success || data is null)
-                return BadRequest(new ErrorMessageResponse { Message = message });
+            if (!result.Success || result.Data is null)
+                return StatusCode(result.StatusCode, new ErrorMessageResponse { Message = result.Message });
 
-            return StatusCode(StatusCodes.Status201Created, new AuthSuccessResponse { Message = message, Data = data });
+            return StatusCode(result.StatusCode, new AuthSuccessResponse { Message = result.Message, Data = result.Data });
         }
 
         /// <summary>Login with email and password. Returns a JWT token on success.</summary>
@@ -38,17 +39,18 @@ namespace startup_project.Controllers
         [ProducesResponseType(typeof(AuthSuccessResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ErrorMessageResponse), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ErrorMessageResponse), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var (success, message, data) = await _authService.LoginAsync(request);
+            var result = await _authService.LoginAsync(request);
 
-            if (!success || data is null)
-                return Unauthorized(new ErrorMessageResponse { Message = message });
+            if (!result.Success || result.Data is null)
+                return StatusCode(result.StatusCode, new ErrorMessageResponse { Message = result.Message });
 
-            return Ok(new AuthSuccessResponse { Message = message, Data = data });
+            return Ok(new AuthSuccessResponse { Message = result.Message, Data = result.Data });
         }
     }
 }

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using startup_project.Common;
 using startup_project.Data;
 using startup_project.Services;
 
@@ -41,7 +42,14 @@ namespace startup_project
             }
 
             // --- JWT Authentication ---
-            var jwtKey = builder.Configuration["Jwt:Key"]!;
+            var jwtKey = builder.Configuration["Jwt:Key"]
+                ?? throw new InvalidOperationException("Required configuration 'Jwt:Key' is missing.");
+            _ = builder.Configuration["Jwt:Issuer"]
+                ?? throw new InvalidOperationException("Required configuration 'Jwt:Issuer' is missing.");
+            _ = builder.Configuration["Jwt:Audience"]
+                ?? throw new InvalidOperationException("Required configuration 'Jwt:Audience' is missing.");
+            if (!double.TryParse(builder.Configuration["Jwt:ExpiryMinutes"], out _))
+                throw new InvalidOperationException("Required configuration 'Jwt:ExpiryMinutes' is missing or not a valid number.");
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
@@ -65,6 +73,10 @@ namespace startup_project
             builder.Services.AddScoped<MenuItemService>();
             builder.Services.AddScoped<CartService>();
             builder.Services.AddScoped<OrderService>();
+
+            // --- Global exception handler ---
+            builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+            builder.Services.AddProblemDetails();
 
             // --- Controllers ---
             builder.Services.AddControllers();
@@ -122,6 +134,8 @@ namespace startup_project
             }
 
             // --- Middleware Pipeline ---
+            app.UseExceptionHandler();
+
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();

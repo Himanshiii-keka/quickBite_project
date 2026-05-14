@@ -15,24 +15,36 @@ namespace startup_project.Services
 
         private readonly ApplicationDbContext _db;
         private readonly IDistributedCache _cache;
+        private readonly ILogger<RestaurantService> _logger;
 
-        public RestaurantService(ApplicationDbContext db, IDistributedCache cache)
+        public RestaurantService(ApplicationDbContext db, IDistributedCache cache, ILogger<RestaurantService> logger)
         {
             _db = db;
             _cache = cache;
+            _logger = logger;
         }
 
         // ---------- Browse (User-facing) ----------
 
-        /// <summary>Returns only restaurants where IsActive = true. Cached (Redis or memory) with a short TTL.</summary>
+        /// <summary>
+        /// Returns only restaurants where IsActive = true.
+        /// Cached with a 2-minute TTL. Redis failures are caught and logged; the request falls
+        /// back to a fresh DB read so callers are never blocked by a cache outage.
+        /// </summary>
         public async Task<List<RestaurantViewModel>> GetActiveAsync()
         {
-            var cached = await _cache.GetStringAsync(PublicReadCache.ActiveRestaurantsKey);
-            if (!string.IsNullOrEmpty(cached))
+            try
             {
-                var fromCache = JsonSerializer.Deserialize<List<RestaurantViewModel>>(cached, JsonOptions);
-                if (fromCache != null)
-                    return fromCache;
+                var cached = await _cache.GetStringAsync(PublicReadCache.ActiveRestaurantsKey);
+                if (!string.IsNullOrEmpty(cached))
+                {
+                    var fromCache = JsonSerializer.Deserialize<List<RestaurantViewModel>>(cached, JsonOptions);
+                    if (fromCache != null) return fromCache;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Cache read failed for active restaurants; falling back to database.");
             }
 
             var fresh = await _db.Restaurants
@@ -50,15 +62,22 @@ namespace startup_project.Services
                 })
                 .ToListAsync();
 
-            await _cache.SetStringAsync(
-                PublicReadCache.ActiveRestaurantsKey,
-                JsonSerializer.Serialize(fresh, JsonOptions),
-                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(2) });
+            try
+            {
+                await _cache.SetStringAsync(
+                    PublicReadCache.ActiveRestaurantsKey,
+                    JsonSerializer.Serialize(fresh, JsonOptions),
+                    new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(2) });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Cache write failed for active restaurants. DB data returned successfully.");
+            }
 
             return fresh;
         }
 
-        /// <summary>Returns ALL restaurants (active + inactive). Admin-only listing.</summary>
+        /// <summary>Returns ALL restaurants (active + inactive). Admin-only listing. No cache — admins need real-time data.</summary>
         public async Task<List<RestaurantViewModel>> GetAllAsync()
         {
             return await _db.Restaurants
@@ -104,10 +123,26 @@ namespace startup_project.Services
                 IsActive = request.IsActive
             };
 
-            _db.Restaurants.Add(restaurant);
-            await _db.SaveChangesAsync();
+            try
+            {
+                _db.Restaurants.Add(restaurant);
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Database error creating restaurant '{Name}'.", request.Name);
+                return ServiceResult<RestaurantViewModel>.Fail(StatusCodes.Status500InternalServerError,
+                    "Failed to create restaurant due to a database error.");
+            }
 
-            await PublicReadCache.InvalidateActiveRestaurantsAsync(_cache);
+            try
+            {
+                await PublicReadCache.InvalidateActiveRestaurantsAsync(_cache);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Cache invalidation failed after creating restaurant {RestaurantId}.", restaurant.Id);
+            }
 
             return ServiceResult<RestaurantViewModel>.Created(Map(restaurant), "Restaurant created.");
         }
@@ -118,17 +153,32 @@ namespace startup_project.Services
             if (restaurant == null)
                 return ServiceResult<RestaurantViewModel>.Fail(StatusCodes.Status404NotFound, "Restaurant not found.");
 
-            // Only patch supplied fields
             if (request.Name != null) restaurant.Name = request.Name.Trim();
             if (request.City != null) restaurant.City = request.City.Trim();
             if (request.Address != null) restaurant.Address = request.Address.Trim();
             if (request.Rating.HasValue) restaurant.Rating = request.Rating.Value;
             if (request.IsActive.HasValue) restaurant.IsActive = request.IsActive.Value;
 
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Database error updating restaurant {RestaurantId}.", id);
+                return ServiceResult<RestaurantViewModel>.Fail(StatusCodes.Status500InternalServerError,
+                    "Failed to update restaurant due to a database error.");
+            }
 
-            await PublicReadCache.InvalidateActiveRestaurantsAsync(_cache);
-            await PublicReadCache.InvalidateRestaurantMenusAsync(_cache, id);
+            try
+            {
+                await PublicReadCache.InvalidateActiveRestaurantsAsync(_cache);
+                await PublicReadCache.InvalidateRestaurantMenusAsync(_cache, id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Cache invalidation failed after updating restaurant {RestaurantId}.", id);
+            }
 
             return ServiceResult<RestaurantViewModel>.Ok(Map(restaurant), "Restaurant updated.");
         }

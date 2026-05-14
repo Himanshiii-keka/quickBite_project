@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using startup_project.Data;
 using startup_project.Models;
+using startup_project.Models.Common;
 using startup_project.Models.Enums;
 
 namespace startup_project.Services
@@ -13,73 +14,93 @@ namespace startup_project.Services
     {
         private readonly ApplicationDbContext _db;
         private readonly IConfiguration _config;
+        private readonly ILogger<AuthService> _logger;
 
-        public AuthService(ApplicationDbContext db, IConfiguration config)
+        public AuthService(ApplicationDbContext db, IConfiguration config, ILogger<AuthService> logger)
         {
             _db = db;
             _config = config;
+            _logger = logger;
         }
 
-        public async Task<(bool Success, string Message, AuthResponse? Data)> RegisterAsync(RegisterRequest request)
+        public async Task<ServiceResult<AuthResponse>> RegisterAsync(RegisterRequest request)
         {
-            // Check if email or phone already taken
-            bool emailExists = await _db.Users.AnyAsync(u => u.Email == request.Email);
-            if (emailExists)
-                return (false, "A user with this email already exists. Please log in.", null);
-
-            bool phoneExists = await _db.Users.AnyAsync(u => u.PhoneNumber == request.PhoneNumber);
-            if (phoneExists)
-                return (false, "A user with this phone number already exists. Please log in.", null);
-
-            var user = new User
+            try
             {
-                Name = request.Name,
-                Email = request.Email.ToLower().Trim(),
-                PhoneNumber = request.PhoneNumber.Trim(),
-                HashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                Role = request.IsAdmin ? UserRole.Admin : UserRole.User,
-            };
+                bool emailExists = await _db.Users.AnyAsync(u => u.Email == request.Email.ToLower().Trim());
+                if (emailExists)
+                    return ServiceResult<AuthResponse>.Fail(StatusCodes.Status400BadRequest,
+                        "A user with this email already exists. Please log in.");
 
-            _db.Users.Add(user);
-            await _db.SaveChangesAsync();
+                bool phoneExists = await _db.Users.AnyAsync(u => u.PhoneNumber == request.PhoneNumber.Trim());
+                if (phoneExists)
+                    return ServiceResult<AuthResponse>.Fail(StatusCodes.Status400BadRequest,
+                        "A user with this phone number already exists. Please log in.");
 
-            var token = GenerateJwtToken(user);
-            return (true, "Registration successful.", new AuthResponse
+                var user = new User
+                {
+                    Name = request.Name,
+                    Email = request.Email.ToLower().Trim(),
+                    PhoneNumber = request.PhoneNumber.Trim(),
+                    HashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                    Role = request.IsAdmin ? UserRole.Admin : UserRole.User,
+                };
+
+                _db.Users.Add(user);
+                await _db.SaveChangesAsync();
+
+                var token = GenerateJwtToken(user);
+                return ServiceResult<AuthResponse>.Created(new AuthResponse
+                {
+                    Token = token,
+                    Name = user.Name,
+                    Email = user.Email,
+                    Role = user.Role.ToString()
+                }, "Registration successful.");
+            }
+            catch (DbUpdateException ex)
             {
-                Token = token,
-                Name = user.Name,
-                Email = user.Email,
-                Role = user.Role.ToString()
-            });
+                _logger.LogError(ex, "Database error during registration for email {Email}", request.Email);
+                return ServiceResult<AuthResponse>.Fail(StatusCodes.Status500InternalServerError,
+                    "Registration failed due to a database error.");
+            }
         }
 
-        public async Task<(bool Success, string Message, AuthResponse? Data)> LoginAsync(LoginRequest request)
+        public async Task<ServiceResult<AuthResponse>> LoginAsync(LoginRequest request)
         {
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == request.Email.ToLower().Trim());
-
-            if (user == null)
-                return (false, "Invalid email or password.", null);
-
-            bool passwordMatch = BCrypt.Net.BCrypt.Verify(request.Password, user.HashedPassword);
-            if (!passwordMatch)
-                return (false, "Invalid email or password.", null);
-
-            var token = GenerateJwtToken(user);
-            return (true, "Login successful.", new AuthResponse
+            try
             {
-                Token = token,
-                Name = user.Name,
-                Email = user.Email,
-                Role = user.Role.ToString()
-            });
+                var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == request.Email.ToLower().Trim());
+
+                if (user == null)
+                    return ServiceResult<AuthResponse>.Fail(StatusCodes.Status401Unauthorized, "Invalid email or password.");
+
+                bool passwordMatch = BCrypt.Net.BCrypt.Verify(request.Password, user.HashedPassword);
+                if (!passwordMatch)
+                    return ServiceResult<AuthResponse>.Fail(StatusCodes.Status401Unauthorized, "Invalid email or password.");
+
+                var token = GenerateJwtToken(user);
+                return ServiceResult<AuthResponse>.Ok(new AuthResponse
+                {
+                    Token = token,
+                    Name = user.Name,
+                    Email = user.Email,
+                    Role = user.Role.ToString()
+                }, "Login successful.");
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Unexpected error during login for email {Email}", request.Email);
+                return ServiceResult<AuthResponse>.Fail(StatusCodes.Status500InternalServerError,
+                    "Login failed due to an unexpected error.");
+            }
         }
 
-        // Builds a JWT token with user identity claims
         private string GenerateJwtToken(User user)
         {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!)); // validated at startup
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var expiry = DateTime.UtcNow.AddMinutes(double.Parse(_config["Jwt:ExpiryMinutes"]!));
+            var expiry = DateTime.UtcNow.AddMinutes(double.Parse(_config["Jwt:ExpiryMinutes"]!)); // validated at startup
 
             var claims = new[]
             {

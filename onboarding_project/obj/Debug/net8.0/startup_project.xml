@@ -11,11 +11,25 @@
             but we also fall back to the raw 'sub' claim in case mapping is ever disabled.
             </summary>
         </member>
-        <member name="T:startup_project.Common.PublicReadCache">
+        <member name="T:startup_project.Common.GlobalExceptionHandler">
             <summary>
-            Keys and invalidation helpers for public read caches (Redis or in-memory <see cref="T:Microsoft.Extensions.Caching.Distributed.IDistributedCache"/>).
-            Logical keys; StackExchange Redis prepends <c>InstanceName</c> from <c>Program.cs</c>.
+            Catches any exception that escapes the service/controller layer and returns a
+            structured JSON 500 response instead of the raw ASP.NET exception page.
+            Registered via builder.Services.AddExceptionHandler&lt;GlobalExceptionHandler&gt;()
+            and activated by app.UseExceptionHandler() in Program.cs.
             </summary>
+        </member>
+        <member name="T:startup_project.Common.PublicReadCache">
+             <summary>
+             Keys and invalidation helpers for public read caches (Redis or in-memory <see cref="T:Microsoft.Extensions.Caching.Distributed.IDistributedCache"/>).
+             Logical keys; StackExchange Redis prepends <c>InstanceName</c> from <c>Program.cs</c>.
+            
+             Consistency strategy: DB is always the source of truth. After every write, the affected
+             cache key is invalidated so the next read repopulates from DB. Short TTLs (2 min for public
+             data, 60 s for per-user cart) bound the staleness window in case invalidation fails.
+             All callers must wrap cache operations in try-catch — Redis being unavailable must
+             never cause an API failure (graceful degradation to DB).
+             </summary>
         </member>
         <member name="M:startup_project.Common.PublicReadCache.InvalidateRestaurantMenusAsync(Microsoft.Extensions.Caching.Distributed.IDistributedCache,System.Int32)">
             <summary>Clears both user (available-only) and admin (full) menu caches for one restaurant.</summary>
@@ -74,11 +88,11 @@
         <member name="M:startup_project.Controllers.OrdersController.Checkout">
             <summary>Place an order from the current user's cart. Empties the cart on success.</summary>
         </member>
-        <member name="M:startup_project.Controllers.OrdersController.GetMyOrders(System.Nullable{System.Int32})">
+        <member name="M:startup_project.Controllers.OrdersController.GetMyOrders">
             <summary>Get the current user's order history (newest first).</summary>
         </member>
         <member name="M:startup_project.Controllers.OrdersController.GetMyOrder(System.Int32)">
-            <summary>Get a specific order belonging to the current user (including its current status).</summary>
+            <summary>Get a specific order belonging to the current user.</summary>
         </member>
         <member name="M:startup_project.Controllers.OrdersController.GetAll(System.Nullable{startup_project.Models.Enums.OrderStatus},System.Nullable{System.Int32})">
             <summary>
@@ -185,22 +199,11 @@
             Request model for adding an item to cart.
             </summary>
         </member>
-        <member name="T:startup_project.Models.ViewModels.OrderItemViewModel">
-            <summary>
-            ViewModel for displaying a single order item in the response.
-            Contains item-specific details without any navigation properties.
-            </summary>
+        <member name="T:startup_project.Models.ViewModels.UserOrderViewModel">
+            <summary>Order details returned to the placing user. Contains no customer identity fields.</summary>
         </member>
-        <member name="T:startup_project.Models.ViewModels.OrderViewModel">
-            <summary>
-            ViewModel for displaying order details.
-            Flattens restaurant and user data into simple properties (no navigation properties).
-            </summary>
-        </member>
-        <member name="T:startup_project.Models.ViewModels.UpdateOrderStatusRequest">
-            <summary>
-            Request model for updating order status.
-            </summary>
+        <member name="T:startup_project.Models.ViewModels.AdminOrderViewModel">
+            <summary>Order details returned to admins — includes customer identity on top of the base view.</summary>
         </member>
         <member name="P:startup_project.Models.ViewModels.UpdateOrderStatusRequest.Status">
             <summary>1=Placed, 2=Confirmed, 3=Preparing, 4=OutForDelivery, 5=Delivered, 6=Cancelled</summary>
@@ -238,30 +241,68 @@
             Request model for updating menu item information.
             </summary>
         </member>
+        <member name="M:startup_project.Services.CartService.GetCartAsync(System.Int32)">
+            <summary>
+            Returns the user's cart. Tries the distributed cache first (60 s TTL) so repeated
+            GET /cart calls don't hit SQL Server on every request. Falls back to DB on cache miss
+            or if Redis is unavailable. Cart data itself always lives in DB for checkout consistency.
+            Each table is queried separately — no SQL JOINs.
+            </summary>
+        </member>
         <member name="M:startup_project.Services.CartService.AddItemAsync(System.Int32,startup_project.Models.ViewModels.AddCartItemRequest)">
             <summary>
             Adds a menu item to the user's cart. Enforces "one restaurant per cart":
-            if the cart already holds items from a different restaurant, returns 409 with a clear message.
+            if the cart already holds items from a different restaurant, returns 409.
             If the item is already in the cart, its quantity is incremented instead of adding a duplicate row.
+            Each table is queried separately — no SQL JOINs.
+            </summary>
+        </member>
+        <member name="M:startup_project.Services.CartService.LoadAndBuildCartViewAsync(System.Int32)">
+            <summary>
+            Builds a CartViewModel by loading each table separately:
+            Cart → CartItems → MenuItems (batch) → Restaurant.
+            No SQL JOINs.
             </summary>
         </member>
         <member name="M:startup_project.Services.MenuItemService.GetByRestaurantAsync(System.Int32,System.Boolean)">
             <summary>
-            Returns menu items for a restaurant. For users we require the restaurant to be active
-            AND only return available items. For admin we return everything. Successful responses are cached per restaurant and filter mode.
+            Returns menu items for a restaurant. For users: restaurant must be active and only
+            available items are returned. For admin: all items regardless of availability.
+            Successful responses are cached per restaurant + filter mode (2 min TTL).
+            Redis failures are caught and logged; the request falls back to a DB read.
             </summary>
+        </member>
+        <member name="M:startup_project.Services.MenuItemService.DeleteAsync(System.Int32)">
+             <summary>
+             Deletes a menu item. Rejected with 409 if the item appears in any historical order.
+            
+             Transaction note: this method removes rows from both CartItems and MenuItems.
+             Both deletes are wrapped in an explicit transaction so a partial failure leaves the
+             DB in a consistent state (either both are removed or neither is).
+             </summary>
         </member>
         <member name="M:startup_project.Services.OrderService.CheckoutAsync(System.Int32)">
             <summary>
             Creates an Order from the user's current cart, snapshots prices into OrderItems,
             then empties the cart. All wrapped in a transaction.
+            Each table is queried separately — no SQL JOINs.
             </summary>
         </member>
+        <member name="M:startup_project.Services.OrderService.GetForUserAsync(System.Int32)">
+            <summary>Returns the user's order history. Tables queried individually — no JOINs.</summary>
+        </member>
+        <member name="M:startup_project.Services.OrderService.GetAllAsync(System.Nullable{startup_project.Models.Enums.OrderStatus},System.Nullable{System.Int32})">
+            <summary>Returns all orders with customer info. Tables queried individually — no JOINs.</summary>
+        </member>
         <member name="M:startup_project.Services.RestaurantService.GetActiveAsync">
-            <summary>Returns only restaurants where IsActive = true. Cached (Redis or memory) with a short TTL.</summary>
+            <summary>
+            Returns only restaurants where IsActive = true.
+            Cached with a 2-minute TTL. Redis failures are caught and logged; the request falls
+            back to a fresh DB read so callers are never blocked by a cache outage.
+            </summary>
         </member>
         <member name="M:startup_project.Services.RestaurantService.GetAllAsync">
-            <summary>Returns ALL restaurants (active + inactive). Admin-only listing.</summary>
+            <summary>Returns ALL restaurants (active + inactive). Admin-only listing. No cache — admins need real-time data.</summary>
         </member>
     </members>
 </doc>
