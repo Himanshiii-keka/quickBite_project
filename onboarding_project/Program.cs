@@ -45,26 +45,21 @@ namespace startup_project
             }
 
             // --- JWT Authentication ---
+            // Simple approach: sign the token with the key, put userId inside.
+            // On each request the middleware decrypts the token using the same key and extracts userId.
             var jwtKey = builder.Configuration["Jwt:Key"]
                 ?? throw new InvalidOperationException("Required configuration 'Jwt:Key' is missing.");
-            _ = builder.Configuration["Jwt:Issuer"]
-                ?? throw new InvalidOperationException("Required configuration 'Jwt:Issuer' is missing.");
-            _ = builder.Configuration["Jwt:Audience"]
-                ?? throw new InvalidOperationException("Required configuration 'Jwt:Audience' is missing.");
-            if (!double.TryParse(builder.Configuration["Jwt:ExpiryMinutes"], out _))
-                throw new InvalidOperationException("Required configuration 'Jwt:ExpiryMinutes' is missing or not a valid number.");
+
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
-                        ValidateIssuer = true,
-                        ValidateAudience = true,
-                        ValidateLifetime = true,
-                        ValidateIssuerSigningKey = true,
-                        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-                        ValidAudience = builder.Configuration["Jwt:Audience"],
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+                        ValidateIssuerSigningKey = true,          // verify the key is correct
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+                        ValidateLifetime = true,                  // reject expired tokens
+                        ValidateIssuer = false,                   // no issuer needed
+                        ValidateAudience = false                  // no audience needed
                     };
                 });
 
