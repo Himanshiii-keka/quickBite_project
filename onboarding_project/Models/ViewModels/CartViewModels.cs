@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace startup_project.Models.ViewModels
 {
     // ---------- Cart Item View Model ----------
@@ -29,21 +27,5 @@ namespace startup_project.Models.ViewModels
         public string? RestaurantName { get; set; }
         public List<CartItemViewModel> Items { get; set; } = new();
         public decimal TotalAmount { get; set; }
-    }
-
-    // ---------- Request Models ----------
-
-    /// <summary>
-    /// Request model for adding an item to cart.
-    /// </summary>
-    public class AddCartItemRequest
-    {
-        /// <example>3</example>
-        [Required]
-        public int MenuItemId { get; set; }
-
-        /// <example>2</example>
-        [Range(1, 99, ErrorMessage = "Quantity must be between 1 and 99.")]
-        public int Quantity { get; set; } = 1;
     }
 }

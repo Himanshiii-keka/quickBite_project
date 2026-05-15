@@ -1,0 +1,413 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>startup_project</name>
+    </assembly>
+    <members>
+        <member name="M:startup_project.Common.ClaimsPrincipalExtensions.GetUserId(System.Security.Claims.ClaimsPrincipal)">
+            <summary>
+            Reads the current user's primary key from the JWT.
+            JwtBearer middleware maps the JWT 'sub' claim to ClaimTypes.NameIdentifier by default,
+            but we also fall back to the raw 'sub' claim in case mapping is ever disabled.
+            </summary>
+        </member>
+        <member name="T:startup_project.Common.GlobalExceptionHandler">
+            <summary>
+            Catches any exception that escapes the service/controller layer and returns a
+            structured JSON 500 response instead of the raw ASP.NET exception page.
+            Registered via builder.Services.AddExceptionHandler&lt;GlobalExceptionHandler&gt;()
+            and activated by app.UseExceptionHandler() in Program.cs.
+            </summary>
+        </member>
+        <member name="T:startup_project.Common.PublicReadCache">
+             <summary>
+             Keys and invalidation helpers for public read caches (Redis or in-memory <see cref="T:Microsoft.Extensions.Caching.Distributed.IDistributedCache"/>).
+             Logical keys; StackExchange Redis prepends <c>InstanceName</c> from <c>Program.cs</c>.
+            
+             Consistency strategy: DB is always the source of truth. After every write, the affected
+             cache key is invalidated so the next read repopulates from DB. Short TTLs (2 min for public
+             data, 60 s for per-user cart) bound the staleness window in case invalidation fails.
+             All callers must wrap cache operations in try-catch — Redis being unavailable must
+             never cause an API failure (graceful degradation to DB).
+             </summary>
+        </member>
+        <member name="M:startup_project.Common.PublicReadCache.InvalidateRestaurantMenusAsync(Microsoft.Extensions.Caching.Distributed.IDistributedCache,System.Int32)">
+            <summary>Clears both user (available-only) and admin (full) menu caches for one restaurant.</summary>
+        </member>
+        <member name="T:startup_project.Controllers.AdminController">
+            <summary>
+            Admin-only endpoints to manage restaurants and menu items.
+            All routes require the Admin role.
+            </summary>
+        </member>
+        <member name="M:startup_project.Controllers.AdminController.GetAllRestaurants">
+            <summary>List ALL restaurants — active and inactive — for admin management.</summary>
+        </member>
+        <member name="M:startup_project.Controllers.AdminController.CreateRestaurant(startup_project.Models.Requests.CreateRestaurantRequest)">
+            <summary>Create a new restaurant.</summary>
+        </member>
+        <member name="M:startup_project.Controllers.AdminController.UpdateRestaurant(System.Int32,startup_project.Models.Requests.UpdateRestaurantRequest)">
+            <summary>Update one or more fields of an existing restaurant. Only supplied fields are changed.</summary>
+        </member>
+        <member name="M:startup_project.Controllers.AdminController.GetMenuForAdmin(System.Int32)">
+            <summary>List ALL menu items for a restaurant (including unavailable ones).</summary>
+        </member>
+        <member name="M:startup_project.Controllers.AdminController.CreateMenuItem(System.Int32,startup_project.Models.Requests.CreateMenuItemRequest)">
+            <summary>Add a menu item to a restaurant.</summary>
+        </member>
+        <member name="M:startup_project.Controllers.AdminController.UpdateMenuItem(System.Int32,startup_project.Models.Requests.UpdateMenuItemRequest)">
+            <summary>Update fields of a menu item, e.g. price or availability. Only supplied fields are changed.</summary>
+        </member>
+        <member name="M:startup_project.Controllers.AdminController.DeleteMenuItem(System.Int32)">
+            <summary>
+            Delete a menu item. Rejected with 409 if the item appears in any historical order —
+            in that case set IsAvailable=false via the update endpoint instead.
+            </summary>
+        </member>
+        <member name="M:startup_project.Controllers.AuthController.Register(startup_project.Models.RegisterRequest)">
+            <summary>Register a new user. Set <c>isAdmin</c> to true for Admin, false for User. Returns a JWT on success.</summary>
+        </member>
+        <member name="M:startup_project.Controllers.AuthController.Login(startup_project.Models.LoginRequest)">
+            <summary>Login with email and password. Returns a JWT token on success.</summary>
+        </member>
+        <member name="M:startup_project.Controllers.CartController.GetCart">
+            <summary>Get the current user's cart. Returns an empty cart if none exists yet.</summary>
+        </member>
+        <member name="M:startup_project.Controllers.CartController.AddItem(startup_project.Models.Requests.AddCartItemRequest)">
+            <summary>
+            Add a menu item to the cart, or increment quantity if it's already there.
+            A cart can only contain items from one restaurant at a time.
+            </summary>
+        </member>
+        <member name="M:startup_project.Controllers.CartController.RemoveItem(System.Int32)">
+            <summary>Remove a single menu item from the cart.</summary>
+        </member>
+        <member name="M:startup_project.Controllers.CartController.Clear">
+            <summary>Empty the cart entirely (also frees it to accept a different restaurant next).</summary>
+        </member>
+        <member name="M:startup_project.Controllers.OrdersController.Checkout">
+            <summary>Place an order from the current user's cart. Empties the cart on success.</summary>
+        </member>
+        <member name="M:startup_project.Controllers.OrdersController.GetMyOrders">
+            <summary>Get the current user's order history (newest first).</summary>
+        </member>
+        <member name="M:startup_project.Controllers.OrdersController.GetMyOrder(System.Int32)">
+            <summary>Get a specific order belonging to the current user.</summary>
+        </member>
+        <member name="M:startup_project.Controllers.OrdersController.GetAll(System.Nullable{startup_project.Models.Enums.OrderStatus},System.Nullable{System.Int32})">
+            <summary>
+            List ALL orders across the system. Optional filters by status and restaurant.
+            </summary>
+            <param name="status">Optional. 1=Placed, 2=Confirmed, 3=Preparing, 4=OutForDelivery, 5=Delivered, 6=Cancelled.</param>
+            <param name="restaurantId">Optional. Restrict to a single restaurant.</param>
+        </member>
+        <member name="M:startup_project.Controllers.OrdersController.UpdateStatus(System.Int32,startup_project.Models.Requests.UpdateOrderStatusRequest)">
+            <summary>Admin updates the status of an order. Delivered / Cancelled orders are terminal and can't be changed.</summary>
+        </member>
+        <member name="M:startup_project.Controllers.RestaurantsController.GetActive">
+            <summary>List all ACTIVE restaurants. Visible to any logged-in user.</summary>
+        </member>
+        <member name="M:startup_project.Controllers.RestaurantsController.GetById(System.Int32)">
+            <summary>Get details of a single active restaurant.</summary>
+        </member>
+        <member name="M:startup_project.Controllers.RestaurantsController.GetMenu(System.Int32)">
+            <summary>List the available menu items for an active restaurant.</summary>
+        </member>
+        <member name="T:startup_project.Migrations.InitialCreate">
+            <inheritdoc />
+        </member>
+        <member name="M:startup_project.Migrations.InitialCreate.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:startup_project.Migrations.InitialCreate.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:startup_project.Migrations.InitialCreate.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:startup_project.Migrations.AddCart">
+            <inheritdoc />
+        </member>
+        <member name="M:startup_project.Migrations.AddCart.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:startup_project.Migrations.AddCart.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:startup_project.Migrations.AddCart.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:startup_project.Migrations.RemoveNavigationProperties">
+            <inheritdoc />
+        </member>
+        <member name="M:startup_project.Migrations.RemoveNavigationProperties.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:startup_project.Migrations.RemoveNavigationProperties.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:startup_project.Migrations.RemoveNavigationProperties.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:startup_project.Models.RegisterRequest">
+            <summary>Register payload. Role is derived from <see cref="P:startup_project.Models.RegisterRequest.IsAdmin"/> (not from a free-text role).</summary>
+        </member>
+        <member name="P:startup_project.Models.RegisterRequest.Name">
+            <example>Alice Johnson</example>
+        </member>
+        <member name="P:startup_project.Models.RegisterRequest.Email">
+            <example>alice@example.com</example>
+        </member>
+        <member name="P:startup_project.Models.RegisterRequest.PhoneNumber">
+            <example>9876543210</example>
+        </member>
+        <member name="P:startup_project.Models.RegisterRequest.Password">
+            <example>secret123</example>
+        </member>
+        <member name="P:startup_project.Models.RegisterRequest.IsAdmin">
+            <summary>If true, the account is created as Admin; if false (default), as User.</summary>
+            <example>false</example>
+        </member>
+        <member name="P:startup_project.Models.LoginRequest.Email">
+            <example>alice@example.com</example>
+        </member>
+        <member name="P:startup_project.Models.LoginRequest.Password">
+            <example>secret123</example>
+        </member>
+        <member name="T:startup_project.Models.AuthResponse">
+            <summary>JWT and user profile returned after successful auth.</summary>
+        </member>
+        <member name="P:startup_project.Models.AuthResponse.Token">
+            <summary>Bearer JWT for authenticated requests.</summary>
+        </member>
+        <member name="P:startup_project.Models.AuthResponse.Role">
+            <summary>Application role name: User or Admin.</summary>
+        </member>
+        <member name="T:startup_project.Models.AuthSuccessResponse">
+            <summary>Successful register/login payload: human-readable message plus auth data.</summary>
+        </member>
+        <member name="T:startup_project.Models.ErrorMessageResponse">
+            <summary>Simple error body for failed login or business-rule failures.</summary>
+        </member>
+        <member name="T:startup_project.Models.Cart">
+            <summary>
+            Each user has at most one cart. A cart can hold items from only ONE restaurant at a time.
+            When the cart is emptied, RestaurantId becomes null again.
+            </summary>
+        </member>
+        <member name="T:startup_project.Models.Common.ServiceResult`1">
+            <summary>
+            Generic result wrapper returned by service layer. Carries an HTTP status code
+            so controllers can map success/failure to the correct response without inspecting messages.
+            </summary>
+        </member>
+        <member name="M:startup_project.Models.Common.ServiceResult`1.#ctor(System.Boolean,System.Int32,System.String,`0)">
+            <summary>
+            Generic result wrapper returned by service layer. Carries an HTTP status code
+            so controllers can map success/failure to the correct response without inspecting messages.
+            </summary>
+        </member>
+        <member name="T:startup_project.Models.Common.ServiceResult">
+            <summary>Non-generic variant for endpoints that don't return data on success.</summary>
+        </member>
+        <member name="M:startup_project.Models.Common.ServiceResult.#ctor(System.Boolean,System.Int32,System.String)">
+            <summary>Non-generic variant for endpoints that don't return data on success.</summary>
+        </member>
+        <member name="T:startup_project.Models.Requests.AddCartItemRequest">
+            <summary>
+            Request model for adding an item to cart.
+            </summary>
+        </member>
+        <member name="P:startup_project.Models.Requests.AddCartItemRequest.MenuItemId">
+            <example>3</example>
+        </member>
+        <member name="P:startup_project.Models.Requests.AddCartItemRequest.Quantity">
+            <example>2</example>
+        </member>
+        <member name="T:startup_project.Models.Requests.CreateMenuItemRequest">
+            <summary>
+            Request model for creating a new menu item.
+            </summary>
+        </member>
+        <member name="P:startup_project.Models.Requests.CreateMenuItemRequest.Name">
+            <example>Paneer Tikka</example>
+        </member>
+        <member name="P:startup_project.Models.Requests.CreateMenuItemRequest.Description">
+            <example>Grilled cottage cheese with spices</example>
+        </member>
+        <member name="P:startup_project.Models.Requests.CreateMenuItemRequest.Price">
+            <example>180.00</example>
+        </member>
+        <member name="P:startup_project.Models.Requests.CreateMenuItemRequest.IsAvailable">
+            <example>true</example>
+        </member>
+        <member name="T:startup_project.Models.Requests.UpdateMenuItemRequest">
+            <summary>
+            Request model for updating menu item information.
+            Partial update — only non-null fields are applied.
+            </summary>
+        </member>
+        <member name="P:startup_project.Models.Requests.UpdateMenuItemRequest.Name">
+            <example>Paneer Tikka Special</example>
+        </member>
+        <member name="P:startup_project.Models.Requests.UpdateMenuItemRequest.Description">
+            <example>Grilled cottage cheese with extra spices</example>
+        </member>
+        <member name="P:startup_project.Models.Requests.UpdateMenuItemRequest.Price">
+            <example>200.00</example>
+        </member>
+        <member name="P:startup_project.Models.Requests.UpdateMenuItemRequest.IsAvailable">
+            <example>true</example>
+        </member>
+        <member name="T:startup_project.Models.Requests.UpdateOrderStatusRequest">
+            <summary>
+            Request model for updating the status of an order (admin action).
+            </summary>
+        </member>
+        <member name="P:startup_project.Models.Requests.UpdateOrderStatusRequest.Status">
+            <summary>1=Placed, 2=Confirmed, 3=Preparing, 4=OutForDelivery, 5=Delivered, 6=Cancelled</summary>
+            <example>2</example>
+        </member>
+        <member name="T:startup_project.Models.Requests.CreateRestaurantRequest">
+            <summary>
+            Request model for creating a new restaurant.
+            </summary>
+        </member>
+        <member name="P:startup_project.Models.Requests.CreateRestaurantRequest.Name">
+            <example>Spice Garden</example>
+        </member>
+        <member name="P:startup_project.Models.Requests.CreateRestaurantRequest.City">
+            <example>Patna</example>
+        </member>
+        <member name="P:startup_project.Models.Requests.CreateRestaurantRequest.Address">
+            <example>12 MG Road, Patna, Bihar 800001</example>
+        </member>
+        <member name="P:startup_project.Models.Requests.CreateRestaurantRequest.Rating">
+            <example>4.2</example>
+        </member>
+        <member name="P:startup_project.Models.Requests.CreateRestaurantRequest.IsActive">
+            <example>true</example>
+        </member>
+        <member name="T:startup_project.Models.Requests.UpdateRestaurantRequest">
+            <summary>
+            Request model for updating restaurant information.
+            Partial update — only non-null fields are applied.
+            </summary>
+        </member>
+        <member name="P:startup_project.Models.Requests.UpdateRestaurantRequest.Name">
+            <example>Spice Garden Updated</example>
+        </member>
+        <member name="P:startup_project.Models.Requests.UpdateRestaurantRequest.City">
+            <example>Patna</example>
+        </member>
+        <member name="P:startup_project.Models.Requests.UpdateRestaurantRequest.Address">
+            <example>15 MG Road, Patna, Bihar 800001</example>
+        </member>
+        <member name="P:startup_project.Models.Requests.UpdateRestaurantRequest.Rating">
+            <example>4.5</example>
+        </member>
+        <member name="P:startup_project.Models.Requests.UpdateRestaurantRequest.IsActive">
+            <example>true</example>
+        </member>
+        <member name="T:startup_project.Models.ViewModels.CartItemViewModel">
+            <summary>
+            ViewModel for a single cart item.
+            Represents cart item data without navigation to Cart or MenuItem entities.
+            </summary>
+        </member>
+        <member name="T:startup_project.Models.ViewModels.CartViewModel">
+            <summary>
+            ViewModel for displaying the user's cart.
+            Contains restaurant reference and list of items without any navigation properties.
+            </summary>
+        </member>
+        <member name="T:startup_project.Models.ViewModels.UserOrderViewModel">
+            <summary>Order details returned to the placing user. Contains no customer identity fields.</summary>
+        </member>
+        <member name="T:startup_project.Models.ViewModels.AdminOrderViewModel">
+            <summary>Order details returned to admins — includes customer identity on top of the base view.</summary>
+        </member>
+        <member name="T:startup_project.Models.ViewModels.RestaurantViewModel">
+            <summary>
+            ViewModel for displaying restaurant information.
+            No navigation properties to MenuItem or Order collections.
+            </summary>
+        </member>
+        <member name="T:startup_project.Models.ViewModels.MenuItemViewModel">
+            <summary>
+            ViewModel for displaying menu item information.
+            No navigation to Restaurant entity.
+            </summary>
+        </member>
+        <member name="T:startup_project.EntityModelsDocumentFilter">
+            <summary>
+            Document filter that ensures all request, response, and entity schemas are present in Swagger.
+            Previously this filter deleted non-entity schemas, which caused request bodies to appear blank.
+            Now it only adds the extra entity types that aren't auto-discovered via controller signatures.
+            </summary>
+        </member>
+        <member name="M:startup_project.Services.CartService.GetCartAsync(System.Int32)">
+            <summary>
+            Returns the user's cart. Tries the distributed cache first (60 s TTL) so repeated
+            GET /cart calls don't hit SQL Server on every request. Falls back to DB on cache miss
+            or if Redis is unavailable. Cart data itself always lives in DB for checkout consistency.
+            Each table is queried separately — no SQL JOINs.
+            </summary>
+        </member>
+        <member name="M:startup_project.Services.CartService.AddItemAsync(System.Int32,startup_project.Models.Requests.AddCartItemRequest)">
+            <summary>
+            Adds a menu item to the user's cart. Enforces "one restaurant per cart":
+            if the cart already holds items from a different restaurant, returns 409.
+            If the item is already in the cart, its quantity is incremented instead of adding a duplicate row.
+            Each table is queried separately — no SQL JOINs.
+            </summary>
+        </member>
+        <member name="M:startup_project.Services.CartService.LoadAndBuildCartViewAsync(System.Int32)">
+            <summary>
+            Builds a CartViewModel by loading each table separately:
+            Cart → CartItems → MenuItems (batch) → Restaurant.
+            No SQL JOINs.
+            </summary>
+        </member>
+        <member name="M:startup_project.Services.MenuItemService.GetByRestaurantAsync(System.Int32,System.Boolean)">
+            <summary>
+            Returns menu items for a restaurant. For users: restaurant must be active and only
+            available items are returned. For admin: all items regardless of availability.
+            Successful responses are cached per restaurant + filter mode (2 min TTL).
+            Redis failures are caught and logged; the request falls back to a DB read.
+            </summary>
+        </member>
+        <member name="M:startup_project.Services.MenuItemService.DeleteAsync(System.Int32)">
+             <summary>
+             Deletes a menu item. Rejected with 409 if the item appears in any historical order.
+            
+             Transaction note: this method removes rows from both CartItems and MenuItems.
+             Both deletes are wrapped in an explicit transaction so a partial failure leaves the
+             DB in a consistent state (either both are removed or neither is).
+             </summary>
+        </member>
+        <member name="M:startup_project.Services.OrderService.CheckoutAsync(System.Int32)">
+            <summary>
+            Creates an Order from the user's current cart, snapshots prices into OrderItems,
+            then empties the cart. All wrapped in a transaction.
+            Each table is queried separately — no SQL JOINs.
+            </summary>
+        </member>
+        <member name="M:startup_project.Services.OrderService.GetForUserAsync(System.Int32)">
+            <summary>Returns the user's order history. Tables queried individually — no JOINs.</summary>
+        </member>
+        <member name="M:startup_project.Services.OrderService.GetAllAsync(System.Nullable{startup_project.Models.Enums.OrderStatus},System.Nullable{System.Int32})">
+            <summary>Returns all orders with customer info. Tables queried individually — no JOINs.</summary>
+        </member>
+        <member name="M:startup_project.Services.RestaurantService.GetActiveAsync">
+            <summary>
+            Returns only restaurants where IsActive = true.
+            Cached with a 2-minute TTL. Redis failures are caught and logged; the request falls
+            back to a fresh DB read so callers are never blocked by a cache outage.
+            </summary>
+        </member>
+        <member name="M:startup_project.Services.RestaurantService.GetAllAsync">
+            <summary>Returns ALL restaurants (active + inactive). Admin-only listing. No cache — admins need real-time data.</summary>
+        </member>
+    </members>
+</doc>

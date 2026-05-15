@@ -23,9 +23,5 @@ namespace startup_project.Models
         public bool IsAvailable { get; set; } = true;
 
         public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
-
-        // Navigation
-        public Restaurant Restaurant { get; set; } = null!;
-        public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
     }
 }

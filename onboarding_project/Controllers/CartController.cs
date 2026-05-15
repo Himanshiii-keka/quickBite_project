@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using startup_project.Common;
 using startup_project.Models;
+using startup_project.Models.Requests;
 using startup_project.Models.ViewModels;
 using startup_project.Services;
 
