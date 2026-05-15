@@ -4,8 +4,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerGen;
 using startup_project.Common;
 using startup_project.Data;
+using startup_project.Models;
+using startup_project.Models.Enums;
 using startup_project.Services;
 
 namespace startup_project
@@ -113,6 +116,9 @@ namespace startup_project
                 var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
                 if (File.Exists(xmlPath))
                     c.IncludeXmlComments(xmlPath);
+
+                // Include entity/table models in Swagger schemas
+                c.DocumentFilter<EntityModelsDocumentFilter>();
             });
 
             var app = builder.Build();
@@ -148,6 +154,49 @@ namespace startup_project
             app.MapControllers();
 
             app.Run();
+        }
+    }
+
+    /// <summary>
+    /// Document filter to show only entity/table models in Swagger schemas.
+    /// </summary>
+    public class EntityModelsDocumentFilter : IDocumentFilter
+    {
+        private static readonly HashSet<string> EntityModelNames = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "User",
+            "Restaurant",
+            "MenuItem",
+            "Order",
+            "OrderItem",
+            "Cart",
+            "CartItem",
+            "OrderStatus",
+            "UserRole"
+        };
+
+        public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
+        {
+            // Generate schemas for entity models
+            context.SchemaGenerator.GenerateSchema(typeof(User), context.SchemaRepository);
+            context.SchemaGenerator.GenerateSchema(typeof(Restaurant), context.SchemaRepository);
+            context.SchemaGenerator.GenerateSchema(typeof(MenuItem), context.SchemaRepository);
+            context.SchemaGenerator.GenerateSchema(typeof(Order), context.SchemaRepository);
+            context.SchemaGenerator.GenerateSchema(typeof(OrderItem), context.SchemaRepository);
+            context.SchemaGenerator.GenerateSchema(typeof(Cart), context.SchemaRepository);
+            context.SchemaGenerator.GenerateSchema(typeof(CartItem), context.SchemaRepository);
+            context.SchemaGenerator.GenerateSchema(typeof(OrderStatus), context.SchemaRepository);
+            context.SchemaGenerator.GenerateSchema(typeof(UserRole), context.SchemaRepository);
+
+            // Remove all non-entity models from schemas
+            var schemasToRemove = swaggerDoc.Components.Schemas.Keys
+                .Where(key => !EntityModelNames.Contains(key))
+                .ToList();
+
+            foreach (var schema in schemasToRemove)
+            {
+                swaggerDoc.Components.Schemas.Remove(schema);
+            }
         }
     }
 }

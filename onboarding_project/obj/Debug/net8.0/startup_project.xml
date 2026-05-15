@@ -241,6 +241,11 @@
             Request model for updating menu item information.
             </summary>
         </member>
+        <member name="T:startup_project.EntityModelsDocumentFilter">
+            <summary>
+            Document filter to show only entity/table models in Swagger schemas.
+            </summary>
+        </member>
         <member name="M:startup_project.Services.CartService.GetCartAsync(System.Int32)">
             <summary>
             Returns the user's cart. Tries the distributed cache first (60 s TTL) so repeated
