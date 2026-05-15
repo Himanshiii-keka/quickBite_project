@@ -42,6 +42,7 @@ namespace startup_project.Models.ViewModels
     public class UpdateOrderStatusRequest
     {
         /// <summary>1=Placed, 2=Confirmed, 3=Preparing, 4=OutForDelivery, 5=Delivered, 6=Cancelled</summary>
+        /// <example>2</example>
         [Required]
         public OrderStatus Status { get; set; }
     }
