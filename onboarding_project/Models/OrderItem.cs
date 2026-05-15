@@ -27,9 +27,5 @@ namespace startup_project.Models
         [Required]
         [Range(0, double.MaxValue)]
         public decimal LineTotal { get; set; }
-
-        // Navigation
-        public Order Order { get; set; } = null!;
-        public MenuItem MenuItem { get; set; } = null!;
     }
 }

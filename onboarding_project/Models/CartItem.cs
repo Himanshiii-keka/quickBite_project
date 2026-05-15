@@ -15,9 +15,5 @@ namespace startup_project.Models
         [Required]
         [Range(1, 99)]
         public int Quantity { get; set; }
-
-        // Navigation
-        public Cart Cart { get; set; } = null!;
-        public MenuItem MenuItem { get; set; } = null!;
     }
 }

@@ -83,11 +83,16 @@ namespace startup_project.Services
                 Status = OrderStatus.Placed,
                 OrderPlacedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                TotalAmount = orderItemsList.Sum(oi => oi.LineTotal),
-                OrderItems = orderItemsList
+                TotalAmount = orderItemsList.Sum(oi => oi.LineTotal)
             };
 
             _db.Orders.Add(order);
+            await _db.SaveChangesAsync();
+
+            foreach (var item in orderItemsList)
+                item.OrderId = order.Id;
+
+            _db.OrderItems.AddRange(orderItemsList);
             _db.CartItems.RemoveRange(cartItems);
             cart.RestaurantId = null;
             cart.UpdatedAtUtc = DateTime.UtcNow;

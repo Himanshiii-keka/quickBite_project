@@ -22,10 +22,5 @@ namespace startup_project.Models
         public DateTime OrderPlacedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-
-        // Navigation
-        public User User { get; set; } = null!;
-        public Restaurant Restaurant { get; set; } = null!;
-        public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
     }
 }

@@ -24,9 +24,5 @@ namespace startup_project.Models
         public decimal Rating { get; set; } = 0.0m;
 
         public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
-
-        // Navigation
-        public ICollection<MenuItem> MenuItems { get; set; } = new List<MenuItem>();
-        public ICollection<Order> Orders { get; set; } = new List<Order>();
     }
 }

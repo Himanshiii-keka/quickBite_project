@@ -26,8 +26,5 @@ namespace startup_project.Models
         public UserRole Role { get; set; } = UserRole.User;
 
         public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
-
-        // Navigation
-        public ICollection<Order> Orders { get; set; } = new List<Order>();
     }
 }

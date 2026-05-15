@@ -17,10 +17,5 @@ namespace startup_project.Models
         public int? RestaurantId { get; set; }
 
         public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
-
-        // Navigation
-        public User User { get; set; } = null!;
-        public Restaurant? Restaurant { get; set; }
-        public ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();
     }
 }
