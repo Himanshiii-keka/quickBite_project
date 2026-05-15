@@ -140,8 +140,27 @@
         <member name="T:startup_project.Models.RegisterRequest">
             <summary>Register payload. Role is derived from <see cref="P:startup_project.Models.RegisterRequest.IsAdmin"/> (not from a free-text role).</summary>
         </member>
+        <member name="P:startup_project.Models.RegisterRequest.Name">
+            <example>Alice Johnson</example>
+        </member>
+        <member name="P:startup_project.Models.RegisterRequest.Email">
+            <example>alice@example.com</example>
+        </member>
+        <member name="P:startup_project.Models.RegisterRequest.PhoneNumber">
+            <example>9876543210</example>
+        </member>
+        <member name="P:startup_project.Models.RegisterRequest.Password">
+            <example>secret123</example>
+        </member>
         <member name="P:startup_project.Models.RegisterRequest.IsAdmin">
             <summary>If true, the account is created as Admin; if false (default), as User.</summary>
+            <example>false</example>
+        </member>
+        <member name="P:startup_project.Models.LoginRequest.Email">
+            <example>alice@example.com</example>
+        </member>
+        <member name="P:startup_project.Models.LoginRequest.Password">
+            <example>secret123</example>
         </member>
         <member name="T:startup_project.Models.AuthResponse">
             <summary>JWT and user profile returned after successful auth.</summary>
@@ -199,6 +218,12 @@
             Request model for adding an item to cart.
             </summary>
         </member>
+        <member name="P:startup_project.Models.ViewModels.AddCartItemRequest.MenuItemId">
+            <example>3</example>
+        </member>
+        <member name="P:startup_project.Models.ViewModels.AddCartItemRequest.Quantity">
+            <example>2</example>
+        </member>
         <member name="T:startup_project.Models.ViewModels.UserOrderViewModel">
             <summary>Order details returned to the placing user. Contains no customer identity fields.</summary>
         </member>
@@ -207,6 +232,7 @@
         </member>
         <member name="P:startup_project.Models.ViewModels.UpdateOrderStatusRequest.Status">
             <summary>1=Placed, 2=Confirmed, 3=Preparing, 4=OutForDelivery, 5=Delivered, 6=Cancelled</summary>
+            <example>2</example>
         </member>
         <member name="T:startup_project.Models.ViewModels.RestaurantViewModel">
             <summary>
@@ -225,25 +251,82 @@
             Request model for creating a new restaurant.
             </summary>
         </member>
+        <member name="P:startup_project.Models.ViewModels.CreateRestaurantRequest.Name">
+            <example>Spice Garden</example>
+        </member>
+        <member name="P:startup_project.Models.ViewModels.CreateRestaurantRequest.City">
+            <example>Patna</example>
+        </member>
+        <member name="P:startup_project.Models.ViewModels.CreateRestaurantRequest.Address">
+            <example>12 MG Road, Patna, Bihar 800001</example>
+        </member>
+        <member name="P:startup_project.Models.ViewModels.CreateRestaurantRequest.Rating">
+            <example>4.2</example>
+        </member>
+        <member name="P:startup_project.Models.ViewModels.CreateRestaurantRequest.IsActive">
+            <example>true</example>
+        </member>
         <member name="T:startup_project.Models.ViewModels.UpdateRestaurantRequest">
             <summary>
             Request model for updating restaurant information.
             Partial update — only non-null fields are applied.
             </summary>
         </member>
+        <member name="P:startup_project.Models.ViewModels.UpdateRestaurantRequest.Name">
+            <example>Spice Garden Updated</example>
+        </member>
+        <member name="P:startup_project.Models.ViewModels.UpdateRestaurantRequest.City">
+            <example>Patna</example>
+        </member>
+        <member name="P:startup_project.Models.ViewModels.UpdateRestaurantRequest.Address">
+            <example>15 MG Road, Patna, Bihar 800001</example>
+        </member>
+        <member name="P:startup_project.Models.ViewModels.UpdateRestaurantRequest.Rating">
+            <example>4.5</example>
+        </member>
+        <member name="P:startup_project.Models.ViewModels.UpdateRestaurantRequest.IsActive">
+            <example>true</example>
+        </member>
         <member name="T:startup_project.Models.ViewModels.CreateMenuItemRequest">
             <summary>
             Request model for creating a new menu item.
             </summary>
         </member>
+        <member name="P:startup_project.Models.ViewModels.CreateMenuItemRequest.Name">
+            <example>Paneer Tikka</example>
+        </member>
+        <member name="P:startup_project.Models.ViewModels.CreateMenuItemRequest.Description">
+            <example>Grilled cottage cheese with spices</example>
+        </member>
+        <member name="P:startup_project.Models.ViewModels.CreateMenuItemRequest.Price">
+            <example>180.00</example>
+        </member>
+        <member name="P:startup_project.Models.ViewModels.CreateMenuItemRequest.IsAvailable">
+            <example>true</example>
+        </member>
         <member name="T:startup_project.Models.ViewModels.UpdateMenuItemRequest">
             <summary>
             Request model for updating menu item information.
+            Partial update — only non-null fields are applied.
             </summary>
+        </member>
+        <member name="P:startup_project.Models.ViewModels.UpdateMenuItemRequest.Name">
+            <example>Paneer Tikka Special</example>
+        </member>
+        <member name="P:startup_project.Models.ViewModels.UpdateMenuItemRequest.Description">
+            <example>Grilled cottage cheese with extra spices</example>
+        </member>
+        <member name="P:startup_project.Models.ViewModels.UpdateMenuItemRequest.Price">
+            <example>200.00</example>
+        </member>
+        <member name="P:startup_project.Models.ViewModels.UpdateMenuItemRequest.IsAvailable">
+            <example>true</example>
         </member>
         <member name="T:startup_project.EntityModelsDocumentFilter">
             <summary>
-            Document filter to show only entity/table models in Swagger schemas.
+            Document filter that ensures all request, response, and entity schemas are present in Swagger.
+            Previously this filter deleted non-entity schemas, which caused request bodies to appear blank.
+            Now it only adds the extra entity types that aren't auto-discovered via controller signatures.
             </summary>
         </member>
         <member name="M:startup_project.Services.CartService.GetCartAsync(System.Int32)">

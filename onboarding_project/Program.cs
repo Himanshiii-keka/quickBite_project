@@ -89,6 +89,8 @@ namespace startup_project
             builder.Services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "QuickBite API", Version = "v1" });
+                c.UseAllOfToExtendReferenceSchemas();
+                c.UseInlineDefinitionsForEnums();
 
                 // Allows pasting Bearer token in Swagger UI
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -158,26 +160,16 @@ namespace startup_project
     }
 
     /// <summary>
-    /// Document filter to show only entity/table models in Swagger schemas.
+    /// Document filter that ensures all request, response, and entity schemas are present in Swagger.
+    /// Previously this filter deleted non-entity schemas, which caused request bodies to appear blank.
+    /// Now it only adds the extra entity types that aren't auto-discovered via controller signatures.
     /// </summary>
     public class EntityModelsDocumentFilter : IDocumentFilter
     {
-        private static readonly HashSet<string> EntityModelNames = new(StringComparer.OrdinalIgnoreCase)
-        {
-            "User",
-            "Restaurant",
-            "MenuItem",
-            "Order",
-            "OrderItem",
-            "Cart",
-            "CartItem",
-            "OrderStatus",
-            "UserRole"
-        };
-
         public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
         {
-            // Generate schemas for entity models
+            // Force-register entity/table models that are not directly referenced by any
+            // controller action signature (so Swagger wouldn't auto-discover them otherwise).
             context.SchemaGenerator.GenerateSchema(typeof(User), context.SchemaRepository);
             context.SchemaGenerator.GenerateSchema(typeof(Restaurant), context.SchemaRepository);
             context.SchemaGenerator.GenerateSchema(typeof(MenuItem), context.SchemaRepository);
@@ -188,15 +180,8 @@ namespace startup_project
             context.SchemaGenerator.GenerateSchema(typeof(OrderStatus), context.SchemaRepository);
             context.SchemaGenerator.GenerateSchema(typeof(UserRole), context.SchemaRepository);
 
-            // Remove all non-entity models from schemas
-            var schemasToRemove = swaggerDoc.Components.Schemas.Keys
-                .Where(key => !EntityModelNames.Contains(key))
-                .ToList();
-
-            foreach (var schema in schemasToRemove)
-            {
-                swaggerDoc.Components.Schemas.Remove(schema);
-            }
+            // Do NOT remove any schemas — all request/response ViewModels must stay so that
+            // Swagger can render the correct "Request body" and "Responses" sections.
         }
     }
 }
